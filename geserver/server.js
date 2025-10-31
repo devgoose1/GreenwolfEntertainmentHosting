@@ -240,19 +240,67 @@ app.get('/games/:gameId/version', (req, res) => {
     });
 });
 
-// Return version history for a game
-app.get('/games/:gameId/versions', (req, res) => {
+// Return version history for a game (try localstorage first; if empty, attempt itch.io fetch & populate)
+app.get('/games/:gameId/versions', async (req, res) => {
     const { gameId } = req.params;
     console.log(`GET /games/${gameId}/versions`);
-    const games = localstorage.getItem('games');
-    const gameInfo = games[gameId];
+    const games = localstorage.getItem('games') || {};
+    let gameInfo = games[gameId];
 
-    // If the game doesn't exist yet, return an empty versions array
-    if (!gameInfo) {
+    // If we have no game or no versions, attempt to fetch from itch.io (best-effort)
+    try {
+        if (!gameInfo || !Array.isArray(gameInfo.versions) || gameInfo.versions.length === 0) {
+            console.log(`No local versions for ${gameId} — attempting itch.io fetch...`);
+            const uploads = await fetchItchUploadsForGame(gameId);
+
+            if (uploads && uploads.length > 0) {
+                // ensure game structure
+                if (!gameInfo) {
+                    gameInfo = { version: null, patchNotes: null, lastUpdated: null, versions: [] };
+                    games[gameId] = gameInfo;
+                }
+                // map uploads into versions (most recent first)
+                const newVersions = uploads
+                    .sort((a, b) => new Date(b.updated_at) - new Date(a.updated_at))
+                    .map(normalizeUploadToVersion);
+
+                // merge: avoid duplicates by id, put newest first
+                const existingIds = new Set((gameInfo.versions || []).map(v => String(v.id)));
+                for (const v of newVersions) {
+                    if (!existingIds.has(String(v.id))) {
+                        gameInfo.versions = gameInfo.versions || [];
+                        gameInfo.versions.unshift(v);
+                    }
+                }
+
+                // update current version if missing
+                if (!gameInfo.version && gameInfo.versions.length > 0) {
+                    gameInfo.version = gameInfo.versions[0].id;
+                    gameInfo.patchNotes = gameInfo.versions[0].patchNotes;
+                    gameInfo.lastUpdated = new Date().toISOString();
+                }
+
+                // persist
+                localstorage.setItem('games', games);
+                console.log(`Populated ${gameId} versions from itch.io (${gameInfo.versions.length} items)`);
+            } else {
+                console.log(`No uploads returned from itch.io for ${gameId}`);
+            }
+        }
+    } catch (err) {
+        console.warn(`Itch fetch/populate for ${gameId} failed:`, err.message);
+        // proceed — we'll return whatever is present (likely empty)
+    }
+
+    // Re-fetch gameInfo after potential populate
+    const refreshedGames = localstorage.getItem('games') || {};
+    const refreshedGameInfo = refreshedGames[gameId];
+
+    if (!refreshedGameInfo) {
         return res.json({ versions: [] });
     }
 
-    res.json({ versions: gameInfo.versions || [] });
+    return res.json({ versions: refreshedGameInfo.versions || [] });
 });
 
 // Announcement endpoints
@@ -486,28 +534,71 @@ app.post('/launcher/launch', (req, res) => {
     res.json({ success: true });
 });
 
-
-
 const ITCH_API_KEY = process.env.ITCH_API_KEY; // put your itch.io API key in .env
 const ITCH_GAME_ID = '3999675'; // your itch.io game id
 
-// Return all itch.io uploads (versions) for the game
+// Helper: fetch uploads from itch.io for a given gameId (returns array or throws)
+async function fetchItchUploadsForGame(gameId) {
+    if (!ITCH_API_KEY) throw new Error('ITCH_API_KEY not configured');
+
+    const url = `https://itch.io/api/1/${ITCH_API_KEY}/game/${gameId}/uploads`;
+    const resp = await axios.get(url, { timeout: 15000 });
+    if (!resp || !resp.data) throw new Error('Invalid response from itch.io');
+    return resp.data.uploads || [];
+}
+
+// Helper: normalize itch upload into the shape we store in localstorage
+function normalizeUploadToVersion(upload) {
+    const detectedAt = new Date().toISOString();
+    return {
+        id: String(upload.id),
+        patchNotes: upload.metadata?.notes || `Upload ${upload.id}`,
+        detectedAt,
+        uploadedAt: upload.updated_at || null,
+        meta: upload
+    };
+}
+
+
+// Return all itch.io uploads (versions) for the configured ITCH_GAME_ID (useful for admin debugging)
 app.get('/itch/versions', async (req, res) => {
     try {
-        const response = await fetch(`https://itch.io/api/1/${ITCH_API_KEY}/game/${ITCH_GAME_ID}/uploads`);
-        const data = await response.json();
+        if (!ITCH_API_KEY || !ITCH_GAME_ID) {
+            return res.status(500).json({ error: 'ITCH_API_KEY or ITCH_GAME_ID not configured' });
+        }
 
-        const versions = data.uploads.map(u => ({
-            id: u.id,
+        const uploads = await fetchItchUploadsForGame(ITCH_GAME_ID);
+        const versions = uploads.map(u => ({
+            id: String(u.id),
             filename: u.filename,
             platform: u.metadata?.platform || 'unknown',
-            version: u.metadata?.version || u.filename
+            version: u.metadata?.version || u.filename,
+            uploadedAt: u.updated_at || null
         }));
-
         res.json({ versions });
     } catch (err) {
-        console.error(err);
+        console.error('Failed to fetch itch versions:', err.message || err);
         res.status(500).json({ error: 'Failed to fetch itch.io versions' });
+    }
+});
+
+// Get direct download link for a specific upload ID (uses itch API)
+app.get('/itch/download/:uploadId', async (req, res) => {
+    try {
+        const { uploadId } = req.params;
+        if (!uploadId) return res.status(400).json({ error: 'Missing uploadId' });
+        if (!ITCH_API_KEY) return res.status(500).json({ error: 'ITCH_API_KEY not configured' });
+
+        const url = `https://itch.io/api/1/${ITCH_API_KEY}/upload/${uploadId}/download`;
+        const resp = await axios.get(url, { timeout: 15000 });
+        const data = resp.data;
+        if (!data || !data.url) return res.status(404).json({ error: 'Download URL not found' });
+
+        // return URL to frontend
+        res.json({ url: data.url });
+    } catch (err) {
+        console.error('Failed to get itch download URL:', err.message || err);
+        res.status(500).json({ error: 'Failed to get download link' });
     }
 });
 
@@ -529,7 +620,42 @@ app.get('/itch/download/:uploadId', async (req, res) => {
 });
 
 
+// Admin: force resync versions for a given game from itch.io
+app.post('/admin/games/:gameId/sync', isAdmin, async (req, res) => {
+    const { gameId } = req.params;
+    try {
+        const uploads = await fetchItchUploadsForGame(gameId);
+        if (!uploads || uploads.length === 0) {
+            return res.json({ success: true, message: 'No uploads found on itch.io' });
+        }
 
+        const games = localstorage.getItem('games') || {};
+        if (!games[gameId]) games[gameId] = { version: null, patchNotes: null, lastUpdated: null, versions: [] };
+
+        const normalized = uploads
+            .sort((a, b) => new Date(b.updated_at) - new Date(a.updated_at))
+            .map(normalizeUploadToVersion);
+
+        // merge unique ids
+        const existingIds = new Set((games[gameId].versions || []).map(v => String(v.id)));
+        for (const v of normalized) {
+            if (!existingIds.has(String(v.id))) games[gameId].versions.unshift(v);
+        }
+
+        // update current if missing or newer
+        if (!games[gameId].version && games[gameId].versions.length > 0) {
+            games[gameId].version = games[gameId].versions[0].id;
+            games[gameId].patchNotes = games[gameId].versions[0].patchNotes;
+            games[gameId].lastUpdated = new Date().toISOString();
+        }
+
+        localstorage.setItem('games', games);
+        res.json({ success: true, versions: games[gameId].versions || [] });
+    } catch (err) {
+        console.error('Admin sync failed for', gameId, err.message || err);
+        res.status(500).json({ error: 'Failed to sync from itch.io' });
+    }
+});
 
 
 // Start server and itch watcher
