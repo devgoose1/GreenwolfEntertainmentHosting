@@ -8,6 +8,22 @@
   },
   "announcements": [],
   "admins": [
-    "admin"
-  ]
+    "admin",
+    "testadmin"
+  ],
+  "users": {
+    "testadmin": {
+      "username": "testadmin",
+      "passwordHash": "$2a$10$XFE.tWkuqYOXBpRlWvMkKOEKDzW3f4mKHHhvKMD9FjE0Xrk9GKWT6",
+      "displayName": "Test Admin",
+      "friendlist": [],
+      "ownedGames": [],
+      "achievements": [],
+      "createdAt": "2025-10-31T12:45:00.000Z"
+    }
+  },
+  "templates": {
+    "global": "New update for {gameId}: version {version}\n\n{patchNotes}",
+    "perGame": {}
+  }
 }

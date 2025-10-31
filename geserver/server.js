@@ -24,7 +24,12 @@ const defaultLimiter = rateLimit({
 // Note: we'll use a Redis-backed, username-aware limiter for auth routes (rate-limiter-flexible)
 // Fallback to in-memory limiter when REDIS_URL is not provided
 const AUTH_WINDOW_SECONDS = 15 * 60; // 15 minutes
-const AUTH_POINTS = 10; // allow 10 attempts per window by default
+const AUTH_POINTS = process.env.TEST_MODE === 'true' ? 1000 : 10; // 1000 attempts in test mode, 10 in production
+const TEST_MODE = process.env.TEST_MODE === 'true';
+
+if (TEST_MODE) {
+    console.log('Running in TEST_MODE - auth rate limits increased');
+}
 
 let redisClient = null;
 if (process.env.REDIS_URL) {
@@ -41,7 +46,7 @@ const authLimiterStore = redisClient ? new RateLimiterRedis({
     storeClient: redisClient,
     points: AUTH_POINTS,
     duration: AUTH_WINDOW_SECONDS,
-    keyPrefix: 'rl_auth'
+    keyPrefix: TEST_MODE ? 'rl_auth_test' : 'rl_auth'
 }) : new RateLimiterMemory({
     points: AUTH_POINTS,
     duration: AUTH_WINDOW_SECONDS
