@@ -2,8 +2,8 @@ const express = require('express');
 const bodyParser = require('body-parser');
 const fs = require('fs');
 const cors = require('cors');
-const { localstorage } = require('./localstorage.js');
-const { startItchWatcher } = require('./itchwatcher.js');
+const { localstorage } = require('./localstorage');
+const { startItchWatcher, getWatcherStatus } = require('./itchwatcher');
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -142,9 +142,20 @@ app.post('/admin/users', isAdmin, (req, res) => {
     res.json({ success: true });
 });
 
-// Health check
+// Health and status endpoints
 app.get('/', (req, res) => {
     res.json({ status: 'ok', time: new Date().toISOString() });
+});
+
+app.get('/status', (req, res) => {
+    const status = getWatcherStatus();
+    res.json({
+        server: {
+            status: 'ok',
+            time: new Date().toISOString()
+        },
+        watcher: status
+    });
 });
 
 // Start server and itch watcher
