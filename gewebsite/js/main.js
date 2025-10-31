@@ -4,10 +4,13 @@ const API_BASE_URL = 'https://greenwolfentertainmenthosting.onrender.com';
 // Utility function for making API requests
 async function apiRequest(endpoint, options = {}) {
     try {
+        const token = localStorage.getItem('gw_token');
+        const authHeader = token ? { 'Authorization': `Bearer ${token}` } : {};
         const response = await fetch(`${API_BASE_URL}${endpoint}`, {
             ...options,
             headers: {
                 'Content-Type': 'application/json',
+                ...authHeader,
                 ...options.headers
             }
         });
@@ -57,44 +60,22 @@ async function getGameVersion(gameId) {
 async function handleAdminLogin() {
     const username = document.getElementById('adminUsername').value;
     const password = document.getElementById('adminPassword').value;
-    const legacyToken = document.getElementById('adminToken').value;
 
     try {
-        if (username && password) {
-            // Try JWT login
-            const resp = await apiRequest('/users/login', {
-                method: 'POST',
-                body: JSON.stringify({ username, password })
-            });
-            if (resp.token) {
-                localStorage.setItem('adminToken', `Bearer ${resp.token}`);
-                document.getElementById('loginSection').style.display = 'none';
-                document.getElementById('adminPanel').style.display = 'block';
-                loadAnnouncements();
-                loadStoredGames();
-                loadTemplatesToUI();
-                return;
-            }
+        if (!username || !password) return alert('Enter username and password');
+        const resp = await apiRequest('/users/login', {
+            method: 'POST',
+            body: JSON.stringify({ username, password })
+        });
+        if (resp.token) {
+            localStorage.setItem('gw_token', resp.token);
+            document.getElementById('loginSection').style.display = 'none';
+            document.getElementById('adminPanel').style.display = 'block';
+            loadAnnouncements();
+            loadStoredGames();
+            loadTemplatesToUI();
+            return;
         }
-
-        if (legacyToken) {
-            const response = await apiRequest('/admin/login', {
-                method: 'POST',
-                body: JSON.stringify({ token: legacyToken })
-            });
-
-            if (response.success) {
-                // store legacy token directly
-                localStorage.setItem('adminToken', legacyToken);
-                document.getElementById('loginSection').style.display = 'none';
-                document.getElementById('adminPanel').style.display = 'block';
-                loadAnnouncements();
-                loadStoredGames();
-                loadTemplatesToUI();
-                return;
-            }
-        }
-
         alert('Invalid login');
     } catch (error) {
         console.error('Admin login failed', error);
@@ -111,9 +92,6 @@ async function createAnnouncement() {
     try {
         await apiRequest('/admin/announcements', {
             method: 'POST',
-            headers: {
-                'Authorization': localStorage.getItem('adminToken')
-            },
             body: JSON.stringify({ title, content, type, gameId })
         });
 
@@ -129,10 +107,7 @@ async function createAnnouncement() {
 // Admin: fetch all stored games (requires admin token)
 async function getAllGames() {
     return await apiRequest('/admin/games', {
-        method: 'GET',
-        headers: {
-            'Authorization': localStorage.getItem('adminToken') || ''
-        }
+        method: 'GET'
     });
 }
 
@@ -144,9 +119,6 @@ async function getTemplates() {
 async function saveTemplate(scope, gameId, template) {
     return await apiRequest('/admin/templates', {
         method: 'POST',
-        headers: {
-            'Authorization': localStorage.getItem('adminToken') || ''
-        },
         body: JSON.stringify({ scope, gameId, template })
     });
 }
@@ -222,14 +194,12 @@ async function loadStoredGames() {
 }
 
 async function addAdminUser() {
-    const token = document.getElementById('newAdminToken').value;
+    const username = document.getElementById('newAdminToken').value;
+    if (!username) return alert('Enter a username to promote');
     try {
         await apiRequest('/admin/users', {
             method: 'POST',
-            headers: {
-                'Authorization': localStorage.getItem('adminToken')
-            },
-            body: JSON.stringify({ action: 'add', token })
+            body: JSON.stringify({ action: 'add', token: username })
         });
         alert('Admin user added successfully');
         document.getElementById('newAdminToken').value = '';
@@ -293,7 +263,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Admin panel initialization
     if (window.location.pathname.includes('admin.html')) {
-        const token = localStorage.getItem('adminToken');
+        const token = localStorage.getItem('gw_token');
         if (token) {
             document.getElementById('loginSection').style.display = 'none';
             document.getElementById('adminPanel').style.display = 'block';
@@ -371,7 +341,18 @@ document.addEventListener('DOMContentLoaded', () => {
                 });
 
                 document.getElementById('launchVersion').addEventListener('click', () => {
-                    alert('Launcher integration not implemented yet. This would instruct the launcher to use version: ' + sel.value);
+                    (async () => {
+                        try {
+                            await apiRequest('/launcher/launch', {
+                                method: 'POST',
+                                body: JSON.stringify({ gameId: GAME_ID, version: sel.value })
+                            });
+                            alert('Launch requested. Please open the Greenwolf Launcher on your machine within 30 seconds to receive the instruction.');
+                        } catch (e) {
+                            console.error('Failed to request launch', e);
+                            alert('Failed to request launch');
+                        }
+                    })();
                 });
 
             } catch (e) {

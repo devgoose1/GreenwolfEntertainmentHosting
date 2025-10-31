@@ -7,6 +7,8 @@ const { startItchWatcher, getWatcherStatus } = require('./itchwatcher');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const rateLimit = require('express-rate-limit');
+const { RateLimiterRedis, RateLimiterMemory } = require('rate-limiter-flexible');
+const IORedis = require('ioredis');
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -19,10 +21,30 @@ const defaultLimiter = rateLimit({
     message: { error: 'Too many requests, please try again later' }
 });
 
-const authLimiter = rateLimit({
-    windowMs: 15 * 60 * 1000,  // 15 minutes
-    max: 5,                    // 5 login attempts per window
-    message: { error: 'Too many login attempts, please try again later' }
+// Note: we'll use a Redis-backed, username-aware limiter for auth routes (rate-limiter-flexible)
+// Fallback to in-memory limiter when REDIS_URL is not provided
+const AUTH_WINDOW_SECONDS = 15 * 60; // 15 minutes
+const AUTH_POINTS = 10; // allow 10 attempts per window by default
+
+let redisClient = null;
+if (process.env.REDIS_URL) {
+    try {
+        redisClient = new IORedis(process.env.REDIS_URL);
+        redisClient.on('error', (e) => console.warn('Redis error', e));
+    } catch (e) {
+        console.warn('Failed to initialize Redis client, falling back to memory limiter', e);
+        redisClient = null;
+    }
+}
+
+const authLimiterStore = redisClient ? new RateLimiterRedis({
+    storeClient: redisClient,
+    points: AUTH_POINTS,
+    duration: AUTH_WINDOW_SECONDS,
+    keyPrefix: 'rl_auth'
+}) : new RateLimiterMemory({
+    points: AUTH_POINTS,
+    duration: AUTH_WINDOW_SECONDS
 });
 
 const adminLimiter = rateLimit({
@@ -38,9 +60,21 @@ app.use(express.json());
 
 // Apply rate limiting
 app.use(defaultLimiter);              // Default limit for all routes
-app.use('/users/login', authLimiter); // Stricter limit for login
-app.use('/users/register', authLimiter); // Stricter limit for registration
+// Use express-rate-limit for general admin routes, but use authLimiterStore for username-aware login/register
 app.use('/admin', adminLimiter);      // Moderate limit for admin routes
+
+// Middleware to rate-limit auth routes by username (fallback to IP when username missing)
+async function authRateLimiterMiddleware(req, res, next) {
+    const username = (req.body && req.body.username) ? String(req.body.username).toLowerCase() : null;
+    const key = username ? `auth_${username}` : `ip_${req.ip}`;
+    try {
+        await authLimiterStore.consume(key, 1);
+        return next();
+    } catch (rejRes) {
+        // rate limited
+        return res.status(429).json({ error: 'Too many login attempts, please try again later' });
+    }
+}
 
 if (!fs.existsSync("db")) fs.mkdirSync("db");
 if (!fs.existsSync("db/localstorage.json")) fs.writeFileSync("db/localstorage.json", "{}");
@@ -66,6 +100,41 @@ if (!localstorage.getItem('templates')) {
 // Initialize users storage
 if (!localstorage.getItem('users')) {
     localstorage.setItem('users', {});
+}
+
+// ADMIN_INIT support: on first run, allow creating a repeatable admin user from env vars
+// Set ADMIN_INIT=username and ADMIN_INIT_PASSWORD=pass in your Render env to auto-create an admin user
+if (process.env.ADMIN_INIT) {
+    const adminName = process.env.ADMIN_INIT;
+    const adminPass = process.env.ADMIN_INIT_PASSWORD || null;
+    const users = localstorage.getItem('users') || {};
+    const admins = localstorage.getItem('admins') || [];
+
+    (async () => {
+        if (!users[adminName]) {
+            // create user record
+            const pass = adminPass || Math.random().toString(36).slice(2, 12);
+            const hash = await bcrypt.hash(pass, 10);
+            users[adminName] = {
+                username: adminName,
+                passwordHash: hash,
+                displayName: adminName,
+                friendlist: [],
+                ownedGames: [],
+                achievements: [],
+                createdAt: new Date().toISOString()
+            };
+            localstorage.setItem('users', users);
+            console.log(`ADMIN_INIT: created user ${adminName}`);
+            if (!adminPass) console.log(`ADMIN_INIT: generated password for ${adminName}: set ADMIN_INIT_PASSWORD env var to control this`);
+        }
+
+        if (!admins.includes(adminName)) {
+            admins.push(adminName);
+            localstorage.setItem('admins', admins);
+            console.log(`ADMIN_INIT: made ${adminName} an admin`);
+        }
+    })();
 }
 
 // Middleware to check admin authentication - JWT only
@@ -221,7 +290,7 @@ app.post('/admin/login', (req, res) => {
 });
 
 // User registration and login (JWT)
-app.post('/users/register', async (req, res) => {
+app.post('/users/register', authRateLimiterMiddleware, async (req, res) => {
     const { username, password, displayName } = req.body;
     if (!username || !password) return res.status(400).json({ error: 'username and password required' });
 
@@ -242,7 +311,7 @@ app.post('/users/register', async (req, res) => {
     res.json({ success: true, user: { username, displayName: users[username].displayName } });
 });
 
-app.post('/users/login', async (req, res) => {
+app.post('/users/login', authRateLimiterMiddleware, async (req, res) => {
     const { username, password } = req.body;
     if (!username || !password) return res.status(400).json({ error: 'username and password required' });
 

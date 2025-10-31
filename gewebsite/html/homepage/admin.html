@@ -26,10 +26,8 @@
             <section class="admin-login" id="loginSection">
                 <h2>Admin Login</h2>
                 <div class="admin-form">
-                    <input type="text" id="adminUsername" placeholder="Username (optional)">
-                    <input type="password" id="adminPassword" placeholder="Password (optional)">
-                    <div style="text-align:center;">— or —</div>
-                    <input type="password" id="adminToken" placeholder="Enter legacy admin token">
+                    <input type="text" id="adminUsername" placeholder="Username">
+                    <input type="password" id="adminPassword" placeholder="Password">
                     <button class="cta-button" onclick="handleAdminLogin()">Login</button>
                 </div>
             </section>
@@ -59,7 +57,7 @@
                 <div class="admin-section">
                     <h3>Admin Management</h3>
                     <div class="admin-form">
-                        <input type="text" id="newAdminToken" placeholder="New Admin Token">
+                        <input type="text" id="newAdminToken" placeholder="Username to make admin">
                         <button class="cta-button" onclick="addAdminUser()">Add Admin</button>
                     </div>
                 </div>
