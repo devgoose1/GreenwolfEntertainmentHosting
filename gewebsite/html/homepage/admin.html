@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Admin Panel - Greenwolf Entertainment</title>
+        <link rel="stylesheet" href="../../css/styles.css">
+        <script src="../../js/main.js" defer></script>
+    </head>
+    <body>
+        <header>
+            <nav>
+                <div class="logo">
+                    <h1>Admin Panel</h1>
+                </div>
+                <ul class="nav-links">
+                    <li><a href="index.html">Home</a></li>
+                    <li><a href="games.html">Games</a></li>
+                    <li><a href="launcher.html">Launcher</a></li>
+                    <li><a href="admin.html" class="active">Admin</a></li>
+                </ul>
+            </nav>
+        </header>
+
+        <main>
+            <section class="admin-login" id="loginSection">
+                <h2>Admin Login</h2>
+                <div class="admin-form">
+                    <input type="password" id="adminToken" placeholder="Enter admin token">
+                    <button class="cta-button" onclick="handleAdminLogin()">Login</button>
+                </div>
+            </section>
+
+            <section class="admin-panel" id="adminPanel" style="display: none;">
+                <h2>Admin Control Panel</h2>
+                
+                <!-- Announcements Form -->
+                <div class="admin-section">
+                    <h3>Create Announcement</h3>
+                    <div class="admin-form">
+                        <input type="text" id="announcementTitle" placeholder="Announcement Title">
+                        <textarea id="announcementContent" placeholder="Announcement Content"></textarea>
+                        <select id="announcementType">
+                            <option value="global">Global Announcement</option>
+                            <option value="game-specific">Game-Specific Announcement</option>
+                        </select>
+                        <select id="gameSelect" style="display: none;">
+                            <option value="adventure-valley">Adventure Valley</option>
+                            <!-- Add more games here as they're released -->
+                        </select>
+                        <button class="cta-button" onclick="createAnnouncement()">Post Announcement</button>
+                    </div>
+                </div>
+
+                <!-- Admin Management -->
+                <div class="admin-section">
+                    <h3>Admin Management</h3>
+                    <div class="admin-form">
+                        <input type="text" id="newAdminToken" placeholder="New Admin Token">
+                        <button class="cta-button" onclick="addAdminUser()">Add Admin</button>
+                    </div>
+                </div>
+
+                <!-- Recent Announcements -->
+                <div class="admin-section">
+                    <h3>Recent Announcements</h3>
+                    <div id="recentAnnouncements" class="announcements-list">
+                        <!-- Announcements will be loaded here -->
+                    </div>
+                </div>
+            </section>
+        </main>
+
+        <footer>
+            <p>&copy; 2025 Greenwolf Entertainment. All rights reserved.</p>
+        </footer>
+    </body>
+</html>
