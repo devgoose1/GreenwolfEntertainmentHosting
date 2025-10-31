@@ -1,3 +1,6 @@
+const path = require('path');
+require('dotenv').config({ path: path.join(__dirname, '.env') });
+
 const express = require('express');
 const bodyParser = require('body-parser');
 const fs = require('fs');
@@ -301,7 +304,6 @@ app.post('/users/register', authRateLimiterMiddleware, async (req, res) => {
 
     const users = localstorage.getItem('users') || {};
     if (users[username]) return res.status(409).json({ error: 'User already exists' });
-
     const hash = await bcrypt.hash(password, 10);
     users[username] = {
         username,
