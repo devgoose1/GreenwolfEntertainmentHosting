@@ -563,24 +563,38 @@ function normalizeUploadToVersion(upload) {
 // Return all itch.io uploads (versions) for the configured ITCH_GAME_ID (useful for admin debugging)
 app.get('/itch/versions', async (req, res) => {
     try {
-        if (!ITCH_API_KEY || !ITCH_GAME_ID) {
-            return res.status(500).json({ error: 'ITCH_API_KEY or ITCH_GAME_ID not configured' });
+        const url = `https://itch.io/api/1/${ITCH_API_KEY}/game/${ITCH_GAME_ID}/uploads`;
+        console.log("Fetching from:", url);
+        const response = await fetch(url);
+
+        console.log("HTTP status:", response.status);
+        const text = await response.text();
+        console.log("Raw response:", text);
+
+        if (!response.ok) {
+            return res.status(response.status).json({ error: `Itch.io API error: ${text}` });
         }
 
-        const uploads = await fetchItchUploadsForGame(ITCH_GAME_ID);
-        const versions = uploads.map(u => ({
-            id: String(u.id),
+        const data = JSON.parse(text);
+
+        if (!data.uploads) {
+            return res.json({ versions: [] });
+        }
+
+        const versions = data.uploads.map(u => ({
+            id: u.id,
             filename: u.filename,
             platform: u.metadata?.platform || 'unknown',
-            version: u.metadata?.version || u.filename,
-            uploadedAt: u.updated_at || null
+            version: u.metadata?.version || u.filename
         }));
+
         res.json({ versions });
     } catch (err) {
-        console.error('Failed to fetch itch versions:', err.message || err);
+        console.error("Detailed error:", err);
         res.status(500).json({ error: 'Failed to fetch itch.io versions' });
     }
 });
+
 
 // Get direct download link for a specific upload ID (uses itch API)
 app.get('/itch/download/:uploadId', async (req, res) => {
