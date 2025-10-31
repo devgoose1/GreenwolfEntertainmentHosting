@@ -65,7 +65,7 @@ async function checkItchUpdates() {
                 if (!games[GAME_ID].versions) games[GAME_ID].versions = [];
                 const exists = games[GAME_ID].versions.find(v => v.id === latest.id);
                 if (!exists) {
-                    games[GAME_ID].versions.unshift({ id: latest.id, patchNotes, detectedAt: now, uploadedAt: latest.updated_at });
+                    games[GAME_ID].versions.unshift({ id: latest.id, patchNotes, detectedAt: now, uploadedAt: latest.updated_at, meta: latest });
                 }
                 localstorage.setItem('games', games);
 

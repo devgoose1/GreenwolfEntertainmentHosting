@@ -55,21 +55,50 @@ async function getGameVersion(gameId) {
 
 // Admin functions
 async function handleAdminLogin() {
-    const token = document.getElementById('adminToken').value;
-    try {
-        const response = await apiRequest('/admin/login', {
-            method: 'POST',
-            body: JSON.stringify({ token })
-        });
+    const username = document.getElementById('adminUsername').value;
+    const password = document.getElementById('adminPassword').value;
+    const legacyToken = document.getElementById('adminToken').value;
 
-        if (response.success) {
-            localStorage.setItem('adminToken', token);
-            document.getElementById('loginSection').style.display = 'none';
-            document.getElementById('adminPanel').style.display = 'block';
-            loadAnnouncements();
+    try {
+        if (username && password) {
+            // Try JWT login
+            const resp = await apiRequest('/users/login', {
+                method: 'POST',
+                body: JSON.stringify({ username, password })
+            });
+            if (resp.token) {
+                localStorage.setItem('adminToken', `Bearer ${resp.token}`);
+                document.getElementById('loginSection').style.display = 'none';
+                document.getElementById('adminPanel').style.display = 'block';
+                loadAnnouncements();
+                loadStoredGames();
+                loadTemplatesToUI();
+                return;
+            }
         }
+
+        if (legacyToken) {
+            const response = await apiRequest('/admin/login', {
+                method: 'POST',
+                body: JSON.stringify({ token: legacyToken })
+            });
+
+            if (response.success) {
+                // store legacy token directly
+                localStorage.setItem('adminToken', legacyToken);
+                document.getElementById('loginSection').style.display = 'none';
+                document.getElementById('adminPanel').style.display = 'block';
+                loadAnnouncements();
+                loadStoredGames();
+                loadTemplatesToUI();
+                return;
+            }
+        }
+
+        alert('Invalid login');
     } catch (error) {
-        alert('Invalid admin token');
+        console.error('Admin login failed', error);
+        alert('Invalid admin credentials');
     }
 }
 
@@ -94,6 +123,101 @@ async function createAnnouncement() {
         loadAnnouncements();
     } catch (error) {
         alert('Failed to create announcement');
+    }
+}
+
+// Admin: fetch all stored games (requires admin token)
+async function getAllGames() {
+    return await apiRequest('/admin/games', {
+        method: 'GET',
+        headers: {
+            'Authorization': localStorage.getItem('adminToken') || ''
+        }
+    });
+}
+
+// Templates
+async function getTemplates() {
+    return await apiRequest('/templates');
+}
+
+async function saveTemplate(scope, gameId, template) {
+    return await apiRequest('/admin/templates', {
+        method: 'POST',
+        headers: {
+            'Authorization': localStorage.getItem('adminToken') || ''
+        },
+        body: JSON.stringify({ scope, gameId, template })
+    });
+}
+
+async function loadTemplatesToUI() {
+    try {
+        const templates = await getTemplates();
+        document.getElementById('globalTemplate').value = templates.global || '';
+        document.getElementById('perGameTemplate').value = '';
+        document.getElementById('tplGameId').value = '';
+    } catch (e) {
+        console.error('Failed to load templates', e);
+    }
+}
+
+function saveGlobalTemplate() {
+    const tpl = document.getElementById('globalTemplate').value;
+    saveTemplate('global', null, tpl)
+        .then(() => alert('Global template saved'))
+        .catch(e => alert('Failed to save template'));
+}
+
+function savePerGameTemplate() {
+    const gameId = document.getElementById('tplGameId').value;
+    const tpl = document.getElementById('perGameTemplate').value;
+    if (!gameId) return alert('Enter a gameId');
+    saveTemplate('perGame', gameId, tpl)
+        .then(() => alert('Per-game template saved'))
+        .catch(e => alert('Failed to save template'));
+}
+
+function renderStoredGames(games) {
+    const container = document.getElementById('storedGames');
+    if (!container) return;
+
+    const keys = Object.keys(games || {});
+    if (keys.length === 0) {
+        container.innerHTML = '<p>No games stored yet.</p>';
+        return;
+    }
+
+    container.innerHTML = keys.map(gameId => {
+        const g = games[gameId] || {};
+        const current = g.version || '—';
+        const lastUpdated = g.lastUpdated ? new Date(g.lastUpdated).toLocaleString() : '—';
+        const versions = (g.versions || []).map(v => `
+            <li>${v.id} <small>(${v.detectedAt ? new Date(v.detectedAt).toLocaleString() : ''})</small></li>
+        `).join('');
+
+        return `
+            <div class="game-item">
+                <h4>${gameId}</h4>
+                <div class="announcement-meta">Current: ${current} • Last updated: ${lastUpdated}</div>
+                <details>
+                    <summary>Version history (${(g.versions || []).length})</summary>
+                    <ul>
+                        ${versions || '<li>No versions recorded</li>'}
+                    </ul>
+                </details>
+            </div>
+        `;
+    }).join('');
+}
+
+async function loadStoredGames() {
+    try {
+        const games = await getAllGames();
+        renderStoredGames(games);
+    } catch (err) {
+        console.error('Failed to load stored games:', err);
+        alert('Failed to load stored games (check admin token)');
     }
 }
 
@@ -185,7 +309,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Load relevant announcements on game pages
     if (window.location.pathname.includes('adventurevalley.html')) {
-        apiRequest('/announcements?type=game-specific&gameId=adventure-valley')
+        const GAME_ID = '3999675'; // map to itch game id
+        apiRequest(`/announcements?type=game-specific&gameId=${GAME_ID}`)
             .then(announcements => {
                 if (announcements.length > 0) {
                     const gameInfo = document.querySelector('.game-info');
@@ -204,6 +329,57 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
             })
             .catch(error => console.error('Failed to load game announcements:', error));
+
+        // Version selector UI
+        const versionContainer = document.createElement('div');
+        versionContainer.className = 'admin-section';
+        versionContainer.innerHTML = `
+            <h3>Versions</h3>
+            <div>
+                <select id="versionSelect"></select>
+                <button class="cta-button" id="downloadVersion">Download</button>
+                <button class="cta-button" id="launchVersion">Launch</button>
+            </div>
+            <div id="versionInfo"></div>
+        `;
+        document.querySelector('main').prepend(versionContainer);
+
+        async function loadGameVersions() {
+            try {
+                const data = await apiRequest(`/games/${GAME_ID}/versions`);
+                const versions = data.versions || [];
+                const sel = document.getElementById('versionSelect');
+                sel.innerHTML = versions.map(v => `<option value="${v.id}">${v.id} ${v.detectedAt ? '- ' + new Date(v.detectedAt).toLocaleString() : ''}</option>`).join('');
+                if (versions.length > 0) {
+                    document.getElementById('versionInfo').textContent = versions[0].patchNotes || '';
+                }
+
+                sel.addEventListener('change', (e) => {
+                    const v = versions.find(x => x.id === e.target.value);
+                    document.getElementById('versionInfo').textContent = v ? (v.patchNotes || '') : '';
+                });
+
+                document.getElementById('downloadVersion').addEventListener('click', () => {
+                    const selected = sel.value;
+                    // If meta contains a download URL, open it; otherwise, fallback to direct download endpoint
+                    const v = versions.find(x => x.id === selected);
+                    if (v && v.meta && v.meta.file && v.meta.file.url) {
+                        window.open(v.meta.file.url, '_blank');
+                    } else {
+                        window.open(`${API_BASE_URL}/games/${GAME_ID}/versions/download?version=${selected}`, '_blank');
+                    }
+                });
+
+                document.getElementById('launchVersion').addEventListener('click', () => {
+                    alert('Launcher integration not implemented yet. This would instruct the launcher to use version: ' + sel.value);
+                });
+
+            } catch (e) {
+                console.error('Failed to load versions', e);
+            }
+        }
+
+        loadGameVersions();
     }
 
     // Initialize any necessary features or UI elements

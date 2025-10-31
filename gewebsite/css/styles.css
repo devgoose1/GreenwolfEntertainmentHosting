@@ -240,6 +240,24 @@ main {
     margin-bottom: 0.5rem;
 }
 
+/* Games list in admin */
+.games-list .game-item {
+    padding: 1rem;
+    border: 1px solid #ddd;
+    border-radius: 8px;
+    margin-bottom: 1rem;
+    background: #fff;
+}
+
+.games-list .game-item h4 {
+    margin-bottom: 0.25rem;
+}
+
+.games-list details summary {
+    cursor: pointer;
+    font-weight: 600;
+}
+
 /* Footer */
 footer {
     background-color: #2c3e50;

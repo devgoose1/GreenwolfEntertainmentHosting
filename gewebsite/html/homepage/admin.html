@@ -26,7 +26,10 @@
             <section class="admin-login" id="loginSection">
                 <h2>Admin Login</h2>
                 <div class="admin-form">
-                    <input type="password" id="adminToken" placeholder="Enter admin token">
+                    <input type="text" id="adminUsername" placeholder="Username (optional)">
+                    <input type="password" id="adminPassword" placeholder="Password (optional)">
+                    <div style="text-align:center;">— or —</div>
+                    <input type="password" id="adminToken" placeholder="Enter legacy admin token">
                     <button class="cta-button" onclick="handleAdminLogin()">Login</button>
                 </div>
             </section>
@@ -66,6 +69,33 @@
                     <h3>Recent Announcements</h3>
                     <div id="recentAnnouncements" class="announcements-list">
                         <!-- Announcements will be loaded here -->
+                    </div>
+                </div>
+
+                <!-- Stored Games -->
+                <div class="admin-section">
+                    <h3>Stored Games & Versions</h3>
+                    <div class="admin-form">
+                        <button class="cta-button" onclick="loadStoredGames()">Refresh Games</button>
+                    </div>
+                    <div id="storedGames" class="games-list">
+                        <!-- Games and version history will be loaded here -->
+                    </div>
+                </div>
+
+                <!-- Templates Editor -->
+                <div class="admin-section">
+                    <h3>Announcement Templates</h3>
+                    <div class="admin-form">
+                        <label>Global Template</label>
+                        <textarea id="globalTemplate" placeholder="Use {gameId}, {version}, {patchNotes}"></textarea>
+                        <button class="cta-button" onclick="saveGlobalTemplate()">Save Global Template</button>
+                    </div>
+                    <div class="admin-form">
+                        <label>Per-Game Template</label>
+                        <input type="text" id="tplGameId" placeholder="Game ID">
+                        <textarea id="perGameTemplate" placeholder="Per-game template"></textarea>
+                        <button class="cta-button" onclick="savePerGameTemplate()">Save Per-Game Template</button>
                     </div>
                 </div>
             </section>
