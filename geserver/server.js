@@ -490,14 +490,14 @@ app.get('/games/:gameId/versions/download', async (req, res) => {
     if (!v) return res.status(404).json({ error: 'Version not found' });
 
     try {
-        // Call itch.io API to get authenticated download URL
-        const response = await axios.get(`https://itch.io/api/1/${API_KEY}/upload/${v.id}/download`);
+        // Call itch.io API with API key
+        const response = await axios.get(`https://itch.io/api/1/${process.env.ITCH_API_KEY}/upload/${v.id}/download`);
         if (!response.data.url) return res.status(404).json({ error: 'No download URL available' });
 
         // Return the URL to frontend
         res.json({ url: response.data.url });
     } catch (err) {
-        console.error('Failed to get download link:', err.message);
+        console.error('Failed to get download link:', err.response?.data || err.message);
         res.status(500).json({ error: 'Failed to get download link' });
     }
 });
