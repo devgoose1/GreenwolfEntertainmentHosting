@@ -132,30 +132,37 @@ if (process.env.ADMIN_INIT) {
     const admins = localstorage.getItem('admins') || [];
 
     (async () => {
-        console.log('ADMIN_INIT: Starting user creation for', adminName);
-        if (!users[adminName]) {
-            // create user record
-            const pass = adminPass || Math.random().toString(36).slice(2, 12);
-            const hash = await bcrypt.hash(pass, 10);
-            users[adminName] = {
-                username: adminName,
-                passwordHash: hash,
-                displayName: adminName,
-                friendlist: [],
-                ownedGames: [],
-                achievements: [],
-                createdAt: new Date().toISOString()
-            };
+        console.log('ADMIN_INIT: Starting user creation/update for', adminName);
+        
+        // Always update password if ADMIN_INIT_PASSWORD is provided
+        if (adminPass) {
+            const hash = await bcrypt.hash(adminPass, 10);
+            if (!users[adminName]) {
+                // Create new user
+                users[adminName] = {
+                    username: adminName,
+                    passwordHash: hash,
+                    displayName: adminName,
+                    friendlist: [],
+                    ownedGames: [],
+                    achievements: [],
+                    createdAt: new Date().toISOString()
+                };
+                console.log(`ADMIN_INIT: Created new user ${adminName}`);
+            } else {
+                // Update existing user's password
+                users[adminName].passwordHash = hash;
+                console.log(`ADMIN_INIT: Updated password for ${adminName}`);
+            }
+            
             try {
                 localstorage.setItem('users', users);
-                console.log(`ADMIN_INIT: created user ${adminName}`);
                 console.log('Updated users storage:', localstorage.getItem('users'));
-                if (!adminPass) console.log(`ADMIN_INIT: generated password for ${adminName}: set ADMIN_INIT_PASSWORD env var to control this`);
             } catch (err) {
                 console.error('ADMIN_INIT: Failed to save user:', err);
             }
         } else {
-            console.log('ADMIN_INIT: User already exists:', adminName);
+            console.log('ADMIN_INIT: Skipping password update (no ADMIN_INIT_PASSWORD provided)');
         }
 
         if (!admins.includes(adminName)) {
