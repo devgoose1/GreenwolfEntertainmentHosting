@@ -601,7 +601,7 @@ app.get('/itch/versions', async (req, res) => {
 });
 
 
-// Get direct download link for a specific upload ID (uses itch API)
+/*// Get direct download link for a specific upload ID (uses itch API)
 app.get('/itch/download/:uploadId', async (req, res) => {
     const { uploadId } = req.params;
     const ITCH_API_KEY = process.env.ITCH_API_KEY;
@@ -620,22 +620,34 @@ app.get('/itch/download/:uploadId', async (req, res) => {
         console.error('Error fetching itch.io download link:', err.response?.data || err.message);
         return res.status(500).json({ error: 'Failed to get download link' });
     }
-});
+});*/
 
 // Get direct download link for a specific upload ID
 app.get('/itch/download/:uploadId', async (req, res) => {
+    const { uploadId } = req.params;
+    const ITCH_API_KEY = process.env.ITCH_API_KEY;
+
+    console.log('DEBUG: /itch/download called with uploadId:', uploadId);
+
+    if (!ITCH_API_KEY) {
+        console.error('DEBUG: Missing ITCH_API_KEY in env!');
+        return res.status(500).json({ error: 'Server misconfiguration: missing ITCH_API_KEY' });
+    }
+
     try {
-        const { uploadId } = req.params;
-        const response = await fetch(`https://itch.io/api/1/${ITCH_API_KEY}/upload/${uploadId}/download`);
-        const data = await response.json();
+        const response = await axios.get(`https://itch.io/api/1/${ITCH_API_KEY}/upload/${uploadId}/download`);
+        console.log('DEBUG: Itch.io response data:', response.data);
 
-        if (!data.url) return res.status(404).json({ error: 'Download URL not found' });
+        if (response.data && response.data.url) {
+            return res.json({ url: response.data.url });
+        } else {
+            console.error('DEBUG: No URL returned from itch.io API for uploadId', uploadId);
+            return res.status(404).json({ error: 'No download URL available for this upload' });
+        }
 
-        // Send JSON to frontend so the browser can download directly
-        res.json({ url: data.url });
     } catch (err) {
-        console.error(err);
-        res.status(500).json({ error: 'Failed to get download link' });
+        console.error('DEBUG: Failed to get download link:', err.response?.data || err.message);
+        return res.status(500).json({ error: 'Failed to get download link', details: err.response?.data || err.message });
     }
 });
 
@@ -676,6 +688,16 @@ app.post('/admin/games/:gameId/sync', isAdmin, async (req, res) => {
         res.status(500).json({ error: 'Failed to sync from itch.io' });
     }
 });
+
+
+app.get('/debug/versions/:gameId', (req, res) => {
+    const { gameId } = req.params;
+    const games = localstorage.getItem('games') || {};
+    console.log('DEBUG: /debug/versions for', gameId, games[gameId]?.versions);
+    res.json({ versions: games[gameId]?.versions || [] });
+});
+
+
 
 
 // Start server and itch watcher

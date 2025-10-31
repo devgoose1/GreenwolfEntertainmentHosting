@@ -37,11 +37,12 @@ async function checkGameAvailability(gameId) {
 
 // User authentication functions
 async function login(credentials) {
-    return await apiRequest('/auth/login', {
+    return await apiRequest('/users/login', {
         method: 'POST',
         body: JSON.stringify(credentials)
     });
 }
+
 
 // Launcher-related functions
 async function getLauncherVersion() {
@@ -294,17 +295,32 @@ document.addEventListener('DOMContentLoaded', () => {
 
             document.getElementById('downloadVersion').addEventListener('click', async () => {
                 const selected = sel.value;
+                console.log('DEBUG: Download button clicked, selected version:', selected);
+
+                if (!selected) {
+                    console.log('DEBUG: No version selected');
+                    return alert('Select a version first');
+                }
+
                 try {
-                    const resp = await fetch(`${API_BASE_URL}/games/${GAME_ID}/versions/download?version=${selected}`);
+                    console.log('DEBUG: Fetching download URL from backend...');
+                    const resp = await fetch(`${API_BASE_URL}/itch/download/${selected}`);
+                    console.log('DEBUG: Fetch response status:', resp.status);
+
                     const data = await resp.json();
+                    console.log('DEBUG: Fetch response data:', data);
+
                     if (data.url) {
+                        console.log('DEBUG: Opening URL in new tab:', data.url);
                         window.open(data.url, '_blank');
                     } else {
-                        alert('Failed to get download link');
+                        console.log('DEBUG: data.url missing or undefined');
+                        alert('Failed to get download link. Check console for details.');
                     }
+
                 } catch (err) {
-                    console.error(err);
-                    alert('Failed to get download link');
+                    console.error('DEBUG: Download request failed:', err);
+                    alert('Failed to get download link. Check console for details.');
                 }
             });
 
