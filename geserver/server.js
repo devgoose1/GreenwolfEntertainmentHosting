@@ -122,10 +122,17 @@ console.log('Available env vars:', {
 if (process.env.ADMIN_INIT) {
     const adminName = process.env.ADMIN_INIT;
     const adminPass = process.env.ADMIN_INIT_PASSWORD || null;
+    console.log('ADMIN_INIT debug:', { 
+        existingUsers: localstorage.getItem('users'),
+        existingAdmins: localstorage.getItem('admins'),
+        willCreateUser: true
+    });
+    
     const users = localstorage.getItem('users') || {};
     const admins = localstorage.getItem('admins') || [];
 
     (async () => {
+        console.log('ADMIN_INIT: Starting user creation for', adminName);
         if (!users[adminName]) {
             // create user record
             const pass = adminPass || Math.random().toString(36).slice(2, 12);
@@ -139,9 +146,16 @@ if (process.env.ADMIN_INIT) {
                 achievements: [],
                 createdAt: new Date().toISOString()
             };
-            localstorage.setItem('users', users);
-            console.log(`ADMIN_INIT: created user ${adminName}`);
-            if (!adminPass) console.log(`ADMIN_INIT: generated password for ${adminName}: set ADMIN_INIT_PASSWORD env var to control this`);
+            try {
+                localstorage.setItem('users', users);
+                console.log(`ADMIN_INIT: created user ${adminName}`);
+                console.log('Updated users storage:', localstorage.getItem('users'));
+                if (!adminPass) console.log(`ADMIN_INIT: generated password for ${adminName}: set ADMIN_INIT_PASSWORD env var to control this`);
+            } catch (err) {
+                console.error('ADMIN_INIT: Failed to save user:', err);
+            }
+        } else {
+            console.log('ADMIN_INIT: User already exists:', adminName);
         }
 
         if (!admins.includes(adminName)) {
