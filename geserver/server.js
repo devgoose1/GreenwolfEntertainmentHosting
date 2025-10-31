@@ -603,21 +603,22 @@ app.get('/itch/versions', async (req, res) => {
 
 // Get direct download link for a specific upload ID (uses itch API)
 app.get('/itch/download/:uploadId', async (req, res) => {
+    const { uploadId } = req.params;
+    const ITCH_API_KEY = process.env.ITCH_API_KEY;
+
     try {
-        const { uploadId } = req.params;
-        if (!uploadId) return res.status(400).json({ error: 'Missing uploadId' });
-        if (!ITCH_API_KEY) return res.status(500).json({ error: 'ITCH_API_KEY not configured' });
+        const response = await axios.get(`https://itch.io/api/1/${ITCH_API_KEY}/upload/${uploadId}/download`);
+        const data = response.data;
 
-        const url = `https://itch.io/api/1/${ITCH_API_KEY}/upload/${uploadId}/download`;
-        const resp = await axios.get(url, { timeout: 15000 });
-        const data = resp.data;
-        if (!data || !data.url) return res.status(404).json({ error: 'Download URL not found' });
-
-        // return URL to frontend
-        res.json({ url: data.url });
+        if (data.url) {
+            // Redirect browser directly to the itch.io signed URL
+            return res.redirect(data.url);
+        } else {
+            return res.status(404).json({ error: 'No download URL available for this upload' });
+        }
     } catch (err) {
-        console.error('Failed to get itch download URL:', err.message || err);
-        res.status(500).json({ error: 'Failed to get download link' });
+        console.error('Error fetching itch.io download link:', err.response?.data || err.message);
+        return res.status(500).json({ error: 'Failed to get download link' });
     }
 });
 
