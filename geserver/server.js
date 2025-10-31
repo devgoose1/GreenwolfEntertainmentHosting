@@ -6,15 +6,41 @@ const { localstorage } = require('./localstorage');
 const { startItchWatcher, getWatcherStatus } = require('./itchwatcher');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
+const rateLimit = require('express-rate-limit');
 
 const app = express();
 const PORT = process.env.PORT || 5000;
 const JWT_SECRET = process.env.JWT_SECRET || 'dev-secret-change-me';
 
-// Helper functions
+// Rate limiting configuration
+const defaultLimiter = rateLimit({
+    windowMs: 15 * 60 * 1000,  // 15 minutes
+    max: 100,                  // 100 requests per window
+    message: { error: 'Too many requests, please try again later' }
+});
+
+const authLimiter = rateLimit({
+    windowMs: 15 * 60 * 1000,  // 15 minutes
+    max: 5,                    // 5 login attempts per window
+    message: { error: 'Too many login attempts, please try again later' }
+});
+
+const adminLimiter = rateLimit({
+    windowMs: 15 * 60 * 1000,  // 15 minutes
+    max: 30,                   // 30 requests per window
+    message: { error: 'Too many admin requests, please try again later' }
+});
+
+// Middleware setup
 app.use(cors());
 app.use(bodyParser.json());
 app.use(express.json());
+
+// Apply rate limiting
+app.use(defaultLimiter);              // Default limit for all routes
+app.use('/users/login', authLimiter); // Stricter limit for login
+app.use('/users/register', authLimiter); // Stricter limit for registration
+app.use('/admin', adminLimiter);      // Moderate limit for admin routes
 
 if (!fs.existsSync("db")) fs.mkdirSync("db");
 if (!fs.existsSync("db/localstorage.json")) fs.writeFileSync("db/localstorage.json", "{}");
@@ -42,37 +68,30 @@ if (!localstorage.getItem('users')) {
     localstorage.setItem('users', {});
 }
 
-// Middleware to check admin authentication
-// Supports legacy admin token (Authorization: <token>) and JWT Bearer tokens (Authorization: Bearer <jwt>)
+// Middleware to check admin authentication - JWT only
 const isAdmin = (req, res, next) => {
     const authHeader = req.headers.authorization;
-    if (!authHeader) {
-        return res.status(401).json({ error: 'No authentication token provided' });
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+        return res.status(401).json({ error: 'Invalid authentication. Use Bearer token.' });
     }
 
-    const adminUsers = localstorage.getItem('admins') || [];
-
-    // Legacy token (exact match)
-    if (adminUsers.includes(authHeader)) {
-        return next();
-    }
-
-    // Bearer JWT
-    if (authHeader.startsWith('Bearer ')) {
+    try {
         const token = authHeader.split(' ')[1];
-        try {
-            const payload = jwt.verify(token, JWT_SECRET);
-            // payload should include isAdmin true for admin users
-            if (payload && payload.isAdmin) {
-                req.user = payload;
-                return next();
-            }
-        } catch (e) {
-            return res.status(401).json({ error: 'Invalid token' });
+        const decoded = jwt.verify(token, JWT_SECRET);
+        
+        if (!decoded.isAdmin) {
+            return res.status(403).json({ error: 'Not authorized - admin access required' });
         }
-    }
 
-    return res.status(403).json({ error: 'Not authorized' });
+        // Store user info for route handlers
+        req.user = decoded;
+        next();
+    } catch (err) {
+        if (err.name === 'TokenExpiredError') {
+            return res.status(401).json({ error: 'Token expired' });
+        }
+        return res.status(401).json({ error: 'Invalid token' });
+    }
 };
 
 // Routes
@@ -324,6 +343,43 @@ app.get('/games/:gameId/versions/download', (req, res) => {
     }
 
     res.status(404).json({ error: 'No download URL available for this version' });
+});
+
+// Launcher communication endpoints
+const launcherInstructions = new Map(); // gameId -> {version, action, timestamp}
+
+// Launcher polls this endpoint to check for instructions
+app.get('/launcher/poll', (req, res) => {
+    const { gameId, clientId } = req.query;
+    if (!gameId || !clientId) {
+        return res.status(400).json({ error: 'Missing gameId or clientId' });
+    }
+
+    const instruction = launcherInstructions.get(gameId);
+    if (instruction && Date.now() - instruction.timestamp < 30000) { // Instructions expire after 30s
+        launcherInstructions.delete(gameId); // Consume the instruction
+        res.json(instruction);
+    } else {
+        res.json({ action: 'idle' });
+    }
+});
+
+// Frontend uses this to request a game launch
+app.post('/launcher/launch', (req, res) => {
+    const { gameId, version } = req.body;
+    if (!gameId || !version) {
+        return res.status(400).json({ error: 'Missing gameId or version' });
+    }
+
+    // Store launch instruction for the launcher to poll
+    launcherInstructions.set(gameId, {
+        action: 'launch',
+        gameId,
+        version,
+        timestamp: Date.now()
+    });
+
+    res.json({ success: true });
 });
 
 // Start server and itch watcher
