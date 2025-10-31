@@ -3,6 +3,7 @@ const bodyParser = require('body-parser');
 const fs = require('fs');
 const cors = require('cors');
 const { localstorage } = require('./localstorage.js');
+const { startItchWatcher } = require('./itchwatcher.js');
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -146,7 +147,9 @@ app.get('/', (req, res) => {
     res.json({ status: 'ok', time: new Date().toISOString() });
 });
 
-// Start server
+// Start server and itch watcher
 app.listen(PORT, () => {
     console.log(`Server listening on port ${PORT}`);
+    // Start the itch watcher after server is running
+    startItchWatcher();
 });
