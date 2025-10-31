@@ -26,7 +26,7 @@ async function apiRequest(endpoint, options = {}) {
     }
 }
 
-// Game-related functions
+// ------------------ Game-related functions ------------------
 async function getGameDetails(gameId) {
     return await apiRequest(`/games/${gameId}`);
 }
@@ -35,7 +35,7 @@ async function checkGameAvailability(gameId) {
     return await apiRequest(`/games/${gameId}/availability`);
 }
 
-// User authentication functions (if needed)
+// User authentication functions
 async function login(credentials) {
     return await apiRequest('/auth/login', {
         method: 'POST',
@@ -56,7 +56,7 @@ async function getGameVersion(gameId) {
     return await apiRequest(`/games/${gameId}/version`);
 }
 
-// Admin functions
+// ------------------ Admin functions ------------------
 async function handleAdminLogin() {
     const username = document.getElementById('adminUsername').value;
     const password = document.getElementById('adminPassword').value;
@@ -95,7 +95,6 @@ async function createAnnouncement() {
             body: JSON.stringify({ title, content, type, gameId })
         });
 
-        // Clear form and reload announcements
         document.getElementById('announcementTitle').value = '';
         document.getElementById('announcementContent').value = '';
         loadAnnouncements();
@@ -104,11 +103,9 @@ async function createAnnouncement() {
     }
 }
 
-// Admin: fetch all stored games (requires admin token)
+// Admin: fetch all stored games
 async function getAllGames() {
-    return await apiRequest('/admin/games', {
-        method: 'GET'
-    });
+    return await apiRequest('/admin/games', { method: 'GET' });
 }
 
 // Templates
@@ -168,18 +165,7 @@ function renderStoredGames(games) {
             <li>${v.id} <small>(${v.detectedAt ? new Date(v.detectedAt).toLocaleString() : ''})</small></li>
         `).join('');
 
-        return `
-            <div class="game-item">
-                <h4>${gameId}</h4>
-                <div class="announcement-meta">Current: ${current} • Last updated: ${lastUpdated}</div>
-                <details>
-                    <summary>Version history (${(g.versions || []).length})</summary>
-                    <ul>
-                        ${versions || '<li>No versions recorded</li>'}
-                    </ul>
-                </details>
-            </div>
-        `;
+        return
     }).join('');
 }
 
@@ -228,27 +214,25 @@ async function loadAnnouncements() {
     }
 }
 
-// Event listeners and initialization
+// ------------------ Event listeners and initialization ------------------
 document.addEventListener('DOMContentLoaded', () => {
-    // Update version information if on launcher or game pages
+
+    const GAME_ID = '3999675';
+
     const launcherVersion = document.getElementById('launcherVersion');
     const gameVersion = document.getElementById('gameVersion');
 
     if (launcherVersion) {
         getLauncherVersion()
-            .then(version => {
-                launcherVersion.textContent = version.current;
-            })
+            .then(version => launcherVersion.textContent = version.current)
             .catch(error => console.error('Failed to fetch launcher version:', error));
     }
 
     if (gameVersion) {
-        // You can replace 'adventure-valley' with the actual game ID
-        getGameVersion('adventure-valley')
+        getGameVersion(GAME_ID)
             .then(version => {
                 gameVersion.textContent = version.current;
                 if (version.patchNotes) {
-                    // Add patch notes to the page if they exist
                     const gameInfo = document.querySelector('.game-info');
                     const patchNotesSection = document.createElement('div');
                     patchNotesSection.innerHTML = `
@@ -270,99 +254,74 @@ document.addEventListener('DOMContentLoaded', () => {
             loadAnnouncements();
         }
 
-        // Show/hide game select based on announcement type
         document.getElementById('announcementType').addEventListener('change', (e) => {
-            document.getElementById('gameSelect').style.display = 
+            document.getElementById('gameSelect').style.display =
                 e.target.value === 'game-specific' ? 'block' : 'none';
         });
     }
 
-    // Load relevant announcements on game pages
-    if (window.location.pathname.includes('adventurevalley.html')) {
-        const GAME_ID = '3999675'; // map to itch game id
-        apiRequest(`/announcements?type=game-specific&gameId=${GAME_ID}`)
-            .then(announcements => {
-                if (announcements.length > 0) {
-                    const gameInfo = document.querySelector('.game-info');
-                    const announcementsSection = document.createElement('div');
-                    announcementsSection.innerHTML = `
-                        <h3>Announcements</h3>
-                        ${announcements.map(a => `
-                            <div class="announcement-item">
-                                <h4>${a.title}</h4>
-                                <div class="announcement-meta">${new Date(a.date).toLocaleDateString()}</div>
-                                <p>${a.content}</p>
-                            </div>
-                        `).join('')}
-                    `;
-                    gameInfo.appendChild(announcementsSection);
-                }
-            })
-            .catch(error => console.error('Failed to load game announcements:', error));
+    // Adventure Valley page
+    async function loadGameVersions() {
+        try {
+            console.log('Fetching versions from backend...');
+            const response = await fetch(`${API_BASE_URL}/itch/versions`);
+            const data = await response.json();
+            console.log('Backend response:', data);
 
-        // Version selector UI
-        const versionContainer = document.createElement('div');
-        versionContainer.className = 'admin-section';
-        versionContainer.innerHTML = `
-            <h3>Versions</h3>
-            <div>
-                <select id="versionSelect"></select>
-                <button class="cta-button" id="downloadVersion">Download</button>
-                <button class="cta-button" id="launchVersion">Launch</button>
-            </div>
-            <div id="versionInfo"></div>
-        `;
-        document.querySelector('main').prepend(versionContainer);
+            const versions = Array.isArray(data) ? data : data.versions || [];
+            const sel = document.getElementById('avVersionSelect');
+            const versionInfo = document.getElementById('versionInfo');
 
-        async function loadGameVersions() {
-            try {
-                const data = await apiRequest(`/games/${GAME_ID}/versions`);
-                const versions = data.versions || [];
-                const sel = document.getElementById('versionSelect');
-                sel.innerHTML = versions.map(v => `<option value="${v.id}">${v.id} ${v.detectedAt ? '- ' + new Date(v.detectedAt).toLocaleString() : ''}</option>`).join('');
-                if (versions.length > 0) {
-                    document.getElementById('versionInfo').textContent = versions[0].patchNotes || '';
-                }
+            if (!sel) return console.error('Version select element not found');
 
-                sel.addEventListener('change', (e) => {
-                    const v = versions.find(x => x.id === e.target.value);
-                    document.getElementById('versionInfo').textContent = v ? (v.patchNotes || '') : '';
-                });
-
-                document.getElementById('downloadVersion').addEventListener('click', () => {
-                    const selected = sel.value;
-                    // If meta contains a download URL, open it; otherwise, fallback to direct download endpoint
-                    const v = versions.find(x => x.id === selected);
-                    if (v && v.meta && v.meta.file && v.meta.file.url) {
-                        window.open(v.meta.file.url, '_blank');
-                    } else {
-                        window.open(`${API_BASE_URL}/games/${GAME_ID}/versions/download?version=${selected}`, '_blank');
-                    }
-                });
-
-                document.getElementById('launchVersion').addEventListener('click', () => {
-                    (async () => {
-                        try {
-                            await apiRequest('/launcher/launch', {
-                                method: 'POST',
-                                body: JSON.stringify({ gameId: GAME_ID, version: sel.value })
-                            });
-                            alert('Launch requested. Please open the Greenwolf Launcher on your machine within 30 seconds to receive the instruction.');
-                        } catch (e) {
-                            console.error('Failed to request launch', e);
-                            alert('Failed to request launch');
-                        }
-                    })();
-                });
-
-            } catch (e) {
-                console.error('Failed to load versions', e);
+            if (versions.length === 0) {
+                sel.innerHTML = `<option disabled selected>No versions available</option>`;
+                if (versionInfo) versionInfo.textContent = '';
+                return;
             }
-        }
 
-        loadGameVersions();
+            sel.innerHTML = versions.map(v =>
+                `<option value="${v.id}">${v.version}</option>`
+            ).join('');
+
+            if (versionInfo)
+                versionInfo.textContent = versions[0]?.filename || '';
+
+            sel.addEventListener('change', (e) => {
+                const selected = versions.find(v => v.id == e.target.value);
+                versionInfo.textContent = selected ? selected.filename : '';
+            });
+
+            document.getElementById('downloadVersion').addEventListener('click', async () => {
+                const selected = sel.value;
+                try {
+                    const resp = await fetch(`${API_BASE_URL}/games/${GAME_ID}/versions/download?version=${selected}`);
+                    const data = await resp.json();
+                    if (data.url) {
+                        window.open(data.url, '_blank');
+                    } else {
+                        alert('Failed to get download link');
+                    }
+                } catch (err) {
+                    console.error(err);
+                    alert('Failed to get download link');
+                }
+            });
+
+        } catch (err) {
+            console.error('Failed to load game versions:', err);
+            const sel = document.getElementById('avVersionSelect');
+            if (sel) sel.innerHTML = `<option disabled selected>Error loading versions</option>`;
+        }
     }
 
-    // Initialize any necessary features or UI elements
+
+    console.log('Main element:', document.querySelector('main'));
+    
+
+
+    loadGameVersions();
+
+
     console.log('Website initialized');
 });

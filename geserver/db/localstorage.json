@@ -3,7 +3,15 @@
     "3999675": {
       "version": 15391748,
       "patchNotes": "New build uploaded at 2025-10-30 08:53:02",
-      "lastUpdated": "2025-10-31T09:53:04.212Z"
+      "lastUpdated": "2025-10-31T09:53:04.212Z",
+      "versions": [
+        {
+          "id": 15391748,
+          "patchNotes": "New build uploaded at 2025-10-30 08:53:02",
+          "detectedAt": "2025-10-31T09:53:04.212Z",
+          "uploadedAt": "2025-10-30 08:53:02"
+        }
+      ]
     }
   },
   "announcements": [],
@@ -14,7 +22,7 @@
   "users": {
     "testadmin": {
       "username": "testadmin",
-      "passwordHash": "$2a$10$XFE.tWkuqYOXBpRlWvMkKOEKDzW3f4mKHHhvKMD9FjE0Xrk9GKWT6",
+      "passwordHash": "$2a$10$Y4wl24wEyGYdQF0kh5avyOPbGrdTpOxsba624rbbso2pR4MKELxnO",
       "displayName": "Test Admin",
       "friendlist": [],
       "ownedGames": [],

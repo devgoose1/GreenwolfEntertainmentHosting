@@ -1,45 +1,63 @@
 <!DOCTYPE html>
 <html lang="en">
-    <head>
-        <meta charset="UTF-8">
-        <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <title>Adventure Valley - Greenwolf Entertainment</title>
-        <link rel="stylesheet" href="../../css/styles.css">
-        <script src="../../js/main.js" defer></script>
-    </head>
-    <body>
-        <header>
-            <nav>
-                <div class="logo">
-                    <h1>Adventure Valley</h1>
-                </div>
-                <ul class="nav-links">
-                    <li><a href="../../index.html">Home</a></li>
-                    <li><a href="../../homepage/games.html">Games</a></li>
-                    <li><a href="../../homepage/launcher.html">Launcher</a></li>
-                </ul>
-            </nav>
-        </header>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Adventure Valley - Greenwolf Entertainment</title>
+    <link rel="stylesheet" href="../../css/styles.css">
+    <script src="../../js/main.js" defer></script>
+</head>
+<body>
+    <header>
+        <nav>
+            <div class="logo">
+                <h1>Adventure Valley</h1>
+            </div>
+            <ul class="nav-links">
+                <li><a href="../../index.html">Home</a></li>
+                <li><a href="../../homepage/games.html">Games</a></li>
+                <li><a href="../../homepage/launcher.html">Launcher</a></li>
+            </ul>
+        </nav>
+    </header>
 
-        <main>
-            <section class="hero">
-                <h2>Welcome to Adventure Valley</h2>
-                <p>Embark on an epic journey through mysterious lands!</p>
-                <div class="game-actions">
-                    <a href="../../../html/homepage/launcher.html" class="cta-button">Play with Launcher</a>
-                    <a href="#" class="cta-button">Direct Download</a>
-                </div>
-                <p class="version-info">Current Version: <span id="gameVersion">1.0.0</span></p>
-            </section>
+    <main>
+        <section class="hero">
+            <h2>Welcome to Adventure Valley</h2>
+            <p>Embark on an epic journey through mysterious lands!</p>
+            <div class="game-actions">
+                <a href="../../../html/homepage/launcher.html" class="cta-button">Play with Launcher</a>
+                <!-- Removed static Direct Download button; handled dynamically below -->
+                <select id="avVersionSelect" class="version-dropdown">
+                    <!-- Options will be populated dynamically by main.js -->
+                    
+                </select>
+                <button class="cta-button" id="downloadVersion">Download Selected Version</button>
+            </div>
+            <p class="version-info">Current Version: <span id="gameVersion">1.0.0</span></p>
+        </section>
 
-            <section class="game-info">
-                <h3>About the Game</h3>
-                <p>Adventure Valley is an exciting journey through mysterious lands where you'll face challenging quests and discover hidden treasures. Explore vast landscapes, battle fearsome creatures, and become the hero you were meant to be!</p>
-            </section>
-        </main>
+        <section class="game-info">
+            <h3>About the Game</h3>
+            <p>Adventure Valley is an exciting journey through mysterious lands where you'll face challenging quests and discover hidden treasures. Explore vast landscapes, battle fearsome creatures, and become the hero you were meant to be!</p>
+        </section>
 
-        <footer>
-            <p>&copy; 2025 Greenwolf Entertainment. All rights reserved.</p>
-        </footer>
-    </body>
+        <!-- Dynamic version selector inserted by main.js -->
+        <!-- main.js will prepend this inside <main>:
+        <div class="admin-section">
+            <h3>Versions</h3>
+            <div>
+                <select id="versionSelect"></select>
+                <button class="cta-button" id="downloadVersion">Download</button>
+                <button class="cta-button" id="launchVersion">Launch</button>
+            </div>
+            <div id="versionInfo"></div>
+        </div>
+        -->
+    </main>
+
+    <footer>
+        <p>&copy; 2025 Greenwolf Entertainment. All rights reserved.</p>
+    </footer>
+</body>
 </html>

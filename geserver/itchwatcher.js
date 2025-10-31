@@ -46,79 +46,82 @@ async function checkItchUpdates() {
 
         try {
             const response = await axios.get(`https://itch.io/api/1/${API_KEY}/game/${GAME_ID}/uploads`);
-            const uploads = response.data.uploads;
+            const uploads = response.data.uploads || [];
+
             watcherStatus.lastSuccess = new Date().toISOString();
             watcherStatus.perGame[GAME_ID].lastSuccess = new Date().toISOString();
 
-            if (!uploads || uploads.length === 0) continue;
+            if (!uploads.length) continue;
 
             // Sort uploads by date (latest first)
-            const latest = uploads.sort((a, b) => new Date(b.updated_at) - new Date(a.updated_at))[0];
+            uploads.sort((a, b) => new Date(b.updated_at) - new Date(a.updated_at));
 
             const games = localstorage.getItem('games') || {};
-            const storedVersion = games[GAME_ID]?.version || null;
+            if (!games[GAME_ID]) games[GAME_ID] = { version: null, patchNotes: null, lastUpdated: null, versions: [] };
 
-            if (storedVersion !== latest.id) {
-                console.log(`New version detected for ${GAME_ID}! Upload ID: ${latest.id}`);
+            let latestUpload = uploads[0];
+            let newVersionDetected = false;
 
-                const patchNotes = `New build uploaded at ${latest.updated_at}`;
-                const now = new Date().toISOString();
-
-                // Ensure game structure
-                if (!games[GAME_ID]) games[GAME_ID] = { version: null, patchNotes: null, lastUpdated: null, versions: [] };
-
-                // Construct a proper download URL for this version
-                const downloadUrl = latest.url || `https://itch.io/my-game/${GAME_ID}/uploads/${latest.id}`;
-
-                games[GAME_ID].version = latest.id;
-                games[GAME_ID].patchNotes = patchNotes;
-                games[GAME_ID].lastUpdated = now;
-                if (!games[GAME_ID].versions) games[GAME_ID].versions = [];
-
-                const exists = games[GAME_ID].versions.find(v => v.id === latest.id);
+            // Loop through uploads to populate versions array
+            for (const upload of uploads) {
+                const exists = games[GAME_ID].versions.find(v => v.id === upload.id);
                 if (!exists) {
+                    const now = new Date().toISOString();
+                    const downloadUrl = upload.url || `https://itch.io/my-game/${GAME_ID}/uploads/${upload.id}`;
                     games[GAME_ID].versions.unshift({
-                        id: latest.id,
-                        patchNotes,
+                        id: upload.id,
+                        patchNotes: `New build uploaded at ${upload.updated_at}`,
                         detectedAt: now,
-                        uploadedAt: latest.updated_at,
+                        uploadedAt: upload.updated_at,
                         url: downloadUrl,
-                        meta: latest
+                        meta: upload
                     });
                 }
+            }
 
-                localstorage.setItem('games', games);
+            // Check if the latest upload is a new version
+            if (games[GAME_ID].version !== latestUpload.id) {
+                newVersionDetected = true;
+                games[GAME_ID].version = latestUpload.id;
+                games[GAME_ID].patchNotes = `New build uploaded at ${latestUpload.updated_at}`;
+                games[GAME_ID].lastUpdated = new Date().toISOString();
+                console.log(`New version detected for ${GAME_ID}! Upload ID: ${latestUpload.id}`);
+            } else {
+                console.log(`No new version found for ${GAME_ID}.`);
+            }
 
-                // Create automatic announcement
+            localstorage.setItem('games', games);
+
+            // Automatic announcement only if new version detected
+            if (newVersionDetected) {
                 try {
                     const templates = localstorage.getItem('templates') || { global: '', perGame: {} };
                     const tpl = (templates.perGame && templates.perGame[GAME_ID]) || templates.global || "New update for {gameId}: version {version}\n\n{patchNotes}";
                     const content = tpl
                         .replace(/{gameId}/g, GAME_ID)
-                        .replace(/{version}/g, latest.id)
-                        .replace(/{patchNotes}/g, patchNotes);
+                        .replace(/{version}/g, latestUpload.id)
+                        .replace(/{patchNotes}/g, games[GAME_ID].patchNotes);
 
                     const announcements = localstorage.getItem('announcements') || [];
                     const newAnnouncement = {
                         id: Date.now().toString(),
-                        title: `New Update: ${GAME_ID} - ${latest.id}`,
+                        title: `New Update: ${GAME_ID} - ${latestUpload.id}`,
                         content,
                         type: 'game-specific',
                         gameId: GAME_ID,
-                        date: now
+                        date: new Date().toISOString()
                     };
                     announcements.unshift(newAnnouncement);
                     localstorage.setItem('announcements', announcements);
 
                     watcherStatus.updatesFound++;
                     watcherStatus.perGame[GAME_ID].updatesFound = (watcherStatus.perGame[GAME_ID].updatesFound || 0) + 1;
-                    console.log('Created automatic announcement for new version:', latest.id);
+                    console.log('Created automatic announcement for new version:', latestUpload.id);
                 } catch (e) {
                     console.error('Failed to create announcement:', e.message);
                 }
-            } else {
-                console.log(`No new version found for ${GAME_ID}.`);
             }
+
         } catch (err) {
             console.error(`Error checking itch.io updates for ${GAME_ID}:`, err.message);
             watcherStatus.lastError = { time: new Date().toISOString(), message: err.message };
@@ -139,7 +142,7 @@ function getWatcherStatus() {
 }
 
 function startItchWatcher() {
-    if (!GAME_IDS || GAME_IDS.length === 0) {
+    if (!GAME_IDS.length) {
         console.warn('No GAME_ID or GAME_IDS configured; itch watcher will not run.');
         return;
     }
