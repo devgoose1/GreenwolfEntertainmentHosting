@@ -264,23 +264,29 @@ document.addEventListener('DOMContentLoaded', () => {
     // Adventure Valley page
     async function loadGameVersions() {
         try {
-            console.log('Fetching versions from backend...');
+            console.log('DEBUG: Fetching versions from backend...');
             const response = await fetch(`${API_BASE_URL}/itch/versions`);
+            console.log('DEBUG: Raw response status:', response.status);
             const data = await response.json();
-            console.log('Backend response:', data);
+            console.log('DEBUG: Parsed versions data:', data);
 
             const versions = Array.isArray(data) ? data : data.versions || [];
             const sel = document.getElementById('avVersionSelect');
             const versionInfo = document.getElementById('versionInfo');
 
-            if (!sel) return console.error('Version select element not found');
+            if (!sel) {
+                console.error('DEBUG: Version select element not found');
+                return;
+            }
 
             if (versions.length === 0) {
                 sel.innerHTML = `<option disabled selected>No versions available</option>`;
                 if (versionInfo) versionInfo.textContent = '';
+                console.warn('DEBUG: No versions available');
                 return;
             }
 
+            // Populate dropdown
             sel.innerHTML = versions.map(v =>
                 `<option value="${v.id}">${v.version}</option>`
             ).join('');
@@ -288,44 +294,44 @@ document.addEventListener('DOMContentLoaded', () => {
             if (versionInfo)
                 versionInfo.textContent = versions[0]?.filename || '';
 
+            // Update displayed filename when selection changes
             sel.addEventListener('change', (e) => {
                 const selected = versions.find(v => v.id == e.target.value);
+                console.log('DEBUG: Selected version changed:', selected);
                 versionInfo.textContent = selected ? selected.filename : '';
             });
 
+            // Handle download button
             document.getElementById('downloadVersion').addEventListener('click', async () => {
-                const selected = sel.value;
-                console.log('DEBUG: Download button clicked, selected version:', selected);
+                const selectedId = sel.value;
+                console.log('DEBUG: Download button clicked, selectedId:', selectedId);
 
-                if (!selected) {
-                    console.log('DEBUG: No version selected');
-                    return alert('Select a version first');
+                if (!selectedId) {
+                    alert('Please select a version first');
+                    return;
                 }
 
                 try {
-                    console.log('DEBUG: Fetching download URL from backend...');
-                    const resp = await fetch(`${API_BASE_URL}/itch/download/${selected}`);
-                    console.log('DEBUG: Fetch response status:', resp.status);
+                    const resp = await fetch(`${API_BASE_URL}/itch/download/${selectedId}`);
+                    console.log('DEBUG: /itch/download response status:', resp.status);
+                    const downloadData = await resp.json();
+                    console.log('DEBUG: /itch/download response data:', downloadData);
 
-                    const data = await resp.json();
-                    console.log('DEBUG: Fetch response data:', data);
-
-                    if (data.url) {
-                        console.log('DEBUG: Opening URL in new tab:', data.url);
-                        window.open(data.url, '_blank');
+                    if (downloadData.url) {
+                        console.log('DEBUG: Opening download URL:', downloadData.url);
+                        window.open(downloadData.url, '_blank');
                     } else {
-                        console.log('DEBUG: data.url missing or undefined');
-                        alert('Failed to get download link. Check console for details.');
+                        alert('Failed to get download link: no URL returned');
+                        console.error('DEBUG: No URL returned from download endpoint');
                     }
-
                 } catch (err) {
-                    console.error('DEBUG: Download request failed:', err);
-                    alert('Failed to get download link. Check console for details.');
+                    console.error('DEBUG: Error fetching download link:', err);
+                    alert('Failed to get download link (see console for details)');
                 }
             });
 
         } catch (err) {
-            console.error('Failed to load game versions:', err);
+            console.error('DEBUG: Failed to load game versions:', err);
             const sel = document.getElementById('avVersionSelect');
             if (sel) sel.innerHTML = `<option disabled selected>Error loading versions</option>`;
         }
