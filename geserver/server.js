@@ -477,24 +477,24 @@ app.get('/admin/games', isAdmin, (req, res) => {
     res.json(games);
 });
 
-// Download helper: return or redirect to download URL for a specific version if available
+// Redirect to the itch.io download URL for a specific version
 app.get('/games/:gameId/versions/download', (req, res) => {
     const { gameId } = req.params;
     const { version } = req.query;
+
     const games = localstorage.getItem('games') || {};
     const gameInfo = games[gameId];
-    if (!gameInfo || !gameInfo.versions) return res.status(404).json({ error: 'Version not found' });
-    const v = gameInfo.versions.find(x => x.id === version);
-    if (!v) return res.status(404).json({ error: 'Version not found' });
-
-    // try to find a URL in meta
-    const url = (v.meta && (v.meta.file && v.meta.file.url)) || v.meta && (v.meta.url || v.meta.download_url);
-    if (url) {
-        // redirect to the file URL
-        return res.redirect(url);
+    if (!gameInfo || !gameInfo.versions) {
+        return res.status(404).json({ error: 'Version not found' });
     }
 
-    res.status(404).json({ error: 'No download URL available for this version' });
+    const v = gameInfo.versions.find(x => x.id == version);
+    if (!v || !v.url) {
+        return res.status(404).json({ error: 'Download URL not found' });
+    }
+
+    // Redirect browser to the itch.io download page
+    res.redirect(v.url);
 });
 
 // Launcher communication endpoints

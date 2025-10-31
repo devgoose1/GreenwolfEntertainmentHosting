@@ -3,14 +3,16 @@ const axios = require('axios');
 const { localstorage } = require('./localstorage');
 
 const API_KEY = process.env.ITCH_API_KEY;
-// Support multiple game ids via comma-separated env var
-const GAME_IDS = (process.env.GAME_IDS || process.env.GAME_ID || '').split(',').map(s => s.trim()).filter(Boolean);
-const POLL_INTERVAL = (process.env.POLL_INTERVAL_MS && Number(process.env.POLL_INTERVAL_MS)) || 1000 * 60 * 10; // default 10 minutes
+// Support multiple game IDs via comma-separated env var
+const GAME_IDS = (process.env.GAME_IDS || process.env.GAME_ID || '')
+    .split(',')
+    .map(s => s.trim())
+    .filter(Boolean);
 
-// Discord webhook for error notifications (optional)
+const POLL_INTERVAL = (process.env.POLL_INTERVAL_MS && Number(process.env.POLL_INTERVAL_MS)) || 1000 * 60 * 10; // default 10 minutes
 const DISCORD_WEBHOOK = process.env.DISCORD_WEBHOOK_URL || null;
 
-// Track watcher status per game
+// Watcher status
 let watcherStatus = {
     lastCheck: null,
     lastSuccess: null,
@@ -34,7 +36,12 @@ async function checkItchUpdates() {
     watcherStatus.checksCount++;
 
     for (const GAME_ID of GAME_IDS) {
-        watcherStatus.perGame[GAME_ID] = watcherStatus.perGame[GAME_ID] || { lastCheck: null, lastSuccess: null, lastError: null, updatesFound: 0 };
+        watcherStatus.perGame[GAME_ID] = watcherStatus.perGame[GAME_ID] || {
+            lastCheck: null,
+            lastSuccess: null,
+            lastError: null,
+            updatesFound: 0
+        };
         watcherStatus.perGame[GAME_ID].lastCheck = new Date().toISOString();
 
         try {
@@ -59,21 +66,38 @@ async function checkItchUpdates() {
 
                 // Ensure game structure
                 if (!games[GAME_ID]) games[GAME_ID] = { version: null, patchNotes: null, lastUpdated: null, versions: [] };
+
+                // Construct a proper download URL for this version
+                const downloadUrl = latest.url || `https://itch.io/my-game/${GAME_ID}/uploads/${latest.id}`;
+
                 games[GAME_ID].version = latest.id;
                 games[GAME_ID].patchNotes = patchNotes;
                 games[GAME_ID].lastUpdated = now;
                 if (!games[GAME_ID].versions) games[GAME_ID].versions = [];
+
                 const exists = games[GAME_ID].versions.find(v => v.id === latest.id);
                 if (!exists) {
-                    games[GAME_ID].versions.unshift({ id: latest.id, patchNotes, detectedAt: now, uploadedAt: latest.updated_at, meta: latest });
+                    games[GAME_ID].versions.unshift({
+                        id: latest.id,
+                        patchNotes,
+                        detectedAt: now,
+                        uploadedAt: latest.updated_at,
+                        url: downloadUrl,
+                        meta: latest
+                    });
                 }
+
                 localstorage.setItem('games', games);
 
-                // Create automatic announcement using templates
+                // Create automatic announcement
                 try {
                     const templates = localstorage.getItem('templates') || { global: '', perGame: {} };
                     const tpl = (templates.perGame && templates.perGame[GAME_ID]) || templates.global || "New update for {gameId}: version {version}\n\n{patchNotes}";
-                    const content = tpl.replace(/{gameId}/g, GAME_ID).replace(/{version}/g, latest.id).replace(/{patchNotes}/g, patchNotes);
+                    const content = tpl
+                        .replace(/{gameId}/g, GAME_ID)
+                        .replace(/{version}/g, latest.id)
+                        .replace(/{patchNotes}/g, patchNotes);
+
                     const announcements = localstorage.getItem('announcements') || [];
                     const newAnnouncement = {
                         id: Date.now().toString(),
@@ -99,7 +123,6 @@ async function checkItchUpdates() {
             console.error(`Error checking itch.io updates for ${GAME_ID}:`, err.message);
             watcherStatus.lastError = { time: new Date().toISOString(), message: err.message };
             watcherStatus.perGame[GAME_ID].lastError = { time: new Date().toISOString(), message: err.message };
-            // Notify to Discord if webhook configured
             if (DISCORD_WEBHOOK) {
                 await notifyDiscord(`Watcher error for game ${GAME_ID}: ${err.message}`);
             }
@@ -120,11 +143,9 @@ function startItchWatcher() {
         console.warn('No GAME_ID or GAME_IDS configured; itch watcher will not run.');
         return;
     }
-    // Run once on startup, then every interval
     checkItchUpdates();
     setInterval(checkItchUpdates, POLL_INTERVAL);
     console.log('Itch.io watcher started for games:', GAME_IDS.join(', '));
 }
 
 module.exports = { startItchWatcher, getWatcherStatus };
-
