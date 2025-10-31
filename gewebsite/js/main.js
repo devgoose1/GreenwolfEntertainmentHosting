@@ -1,5 +1,5 @@
 // API endpoint configuration
-const API_BASE_URL = 'http://localhost:3000'; // Update this with your actual backend URL
+const API_BASE_URL = 'https://greenwolfentertainmenthosting.onrender.com';
 
 // Utility function for making API requests
 async function apiRequest(endpoint, options = {}) {
