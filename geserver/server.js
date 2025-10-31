@@ -486,6 +486,52 @@ app.post('/launcher/launch', (req, res) => {
     res.json({ success: true });
 });
 
+
+
+const ITCH_API_KEY = process.env.ITCH_API_KEY; // put your itch.io API key in .env
+const ITCH_GAME_ID = '3999675'; // your itch.io game id
+
+// Return all itch.io uploads (versions) for the game
+app.get('/itch/versions', async (req, res) => {
+    try {
+        const response = await fetch(`https://itch.io/api/1/${ITCH_API_KEY}/game/${ITCH_GAME_ID}/uploads`);
+        const data = await response.json();
+
+        const versions = data.uploads.map(u => ({
+            id: u.id,
+            filename: u.filename,
+            platform: u.metadata?.platform || 'unknown',
+            version: u.metadata?.version || u.filename
+        }));
+
+        res.json({ versions });
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ error: 'Failed to fetch itch.io versions' });
+    }
+});
+
+// Get direct download link for a specific upload ID
+app.get('/itch/download/:uploadId', async (req, res) => {
+    try {
+        const { uploadId } = req.params;
+        const response = await fetch(`https://itch.io/api/1/${ITCH_API_KEY}/upload/${uploadId}/download`);
+        const data = await response.json();
+
+        if (!data.url) return res.status(404).json({ error: 'Download URL not found' });
+
+        // Send JSON to frontend so the browser can download directly
+        res.json({ url: data.url });
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ error: 'Failed to get download link' });
+    }
+});
+
+
+
+
+
 // Start server and itch watcher
 app.listen(PORT, () => {
     console.log(`Server listening on port ${PORT}`);
