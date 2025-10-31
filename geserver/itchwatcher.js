@@ -5,7 +5,6 @@ const { localstorage } = require('./localstorage');
 const API_KEY = process.env.ITCH_API_KEY;
 const GAME_ID = process.env.GAME_ID;
 const POLL_INTERVAL = 1000 * 60 * 10; // 10 minutes
-const BACKEND_URL = process.env.BACKEND_URL || 'http://localhost:5000';
 
 async function checkItchUpdates() {
     try {
@@ -27,11 +26,14 @@ async function checkItchUpdates() {
             // Optional: fetch patch notes or changelog manually from your own system
             const patchNotes = `New build uploaded at ${latest.updated_at}`;
 
-            // Call your internal webhook (configurable for deployment)
-            await axios.post(`${BACKEND_URL}/webhook/itch-io/${GAME_ID}`, {
+            // Since we're running in the same process, just call the storage directly
+            const games = localstorage.getItem('games') || {};
+            games[GAME_ID] = {
                 version: latest.id,
-                patchNotes
-            });
+                patchNotes,
+                lastUpdated: new Date().toISOString()
+            };
+            localstorage.setItem('games', games);
 
             console.log('Backend updated successfully.');
         } else {
@@ -43,6 +45,12 @@ async function checkItchUpdates() {
     }
 }
 
-// Run once on startup, then every interval
-checkItchUpdates();
-setInterval(checkItchUpdates, POLL_INTERVAL);
+// Export the function to start watching
+function startItchWatcher() {
+    // Run once on startup, then every interval
+    checkItchUpdates();
+    setInterval(checkItchUpdates, POLL_INTERVAL);
+    console.log('Itch.io watcher started');
+}
+
+module.exports = { startItchWatcher };
