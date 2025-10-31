@@ -12,6 +12,7 @@ const jwt = require('jsonwebtoken');
 const rateLimit = require('express-rate-limit');
 const { RateLimiterRedis, RateLimiterMemory } = require('rate-limiter-flexible');
 const IORedis = require('ioredis');
+const axios = require('axios');
 
 const app = express();
 const PORT = process.env.PORT || 5000;
