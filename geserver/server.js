@@ -112,6 +112,13 @@ if (!localstorage.getItem('users')) {
 
 // ADMIN_INIT support: on first run, allow creating a repeatable admin user from env vars
 // Set ADMIN_INIT=username and ADMIN_INIT_PASSWORD=pass in your Render env to auto-create an admin user
+console.log('Available env vars:', {
+    ADMIN_INIT: process.env.ADMIN_INIT,
+    TEST_MODE: process.env.TEST_MODE,
+    // Don't log passwords in production
+    HAS_ADMIN_PASS: !!process.env.ADMIN_INIT_PASSWORD
+});
+
 if (process.env.ADMIN_INIT) {
     const adminName = process.env.ADMIN_INIT;
     const adminPass = process.env.ADMIN_INIT_PASSWORD || null;
