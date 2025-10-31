@@ -478,23 +478,28 @@ app.get('/admin/games', isAdmin, (req, res) => {
 });
 
 // Redirect to the itch.io download URL for a specific version
-app.get('/games/:gameId/versions/download', (req, res) => {
+app.get('/games/:gameId/versions/download', async (req, res) => {
     const { gameId } = req.params;
     const { version } = req.query;
 
     const games = localstorage.getItem('games') || {};
     const gameInfo = games[gameId];
-    if (!gameInfo || !gameInfo.versions) {
-        return res.status(404).json({ error: 'Version not found' });
-    }
+    if (!gameInfo) return res.status(404).json({ error: 'Version not found' });
 
-    const v = gameInfo.versions.find(x => x.id == version);
-    if (!v || !v.url) {
-        return res.status(404).json({ error: 'Download URL not found' });
-    }
+    const v = gameInfo.versions.find(x => x.id.toString() === version.toString());
+    if (!v) return res.status(404).json({ error: 'Version not found' });
 
-    // Redirect browser to the itch.io download page
-    res.redirect(v.url);
+    try {
+        // Call itch.io API to get authenticated download URL
+        const response = await axios.get(`https://itch.io/api/1/${API_KEY}/upload/${v.id}/download`);
+        if (!response.data.url) return res.status(404).json({ error: 'No download URL available' });
+
+        // Return the URL to frontend
+        res.json({ url: response.data.url });
+    } catch (err) {
+        console.error('Failed to get download link:', err.message);
+        res.status(500).json({ error: 'Failed to get download link' });
+    }
 });
 
 // Launcher communication endpoints
