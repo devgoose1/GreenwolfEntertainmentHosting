@@ -18,6 +18,9 @@ const app = express();
 const PORT = process.env.PORT || 5000;
 const JWT_SECRET = process.env.JWT_SECRET || 'dev-secret-change-me';
 
+app.use(cors({ origin: "*", methods: ["GET", "POST", "OPTIONS"] }));
+app.options("*", cors()); // allow preflight for all routes
+
 // Rate limiting configuration
 const defaultLimiter = rateLimit({
     windowMs: 15 * 60 * 1000,  // 15 minutes
@@ -698,6 +701,9 @@ app.get('/debug/versions/:gameId', (req, res) => {
     res.json({ versions: games[gameId]?.versions || [] });
 });
 
+app.get("/status", (req, res) => {
+  res.json({ ok: true, uptime: process.uptime() });
+});
 
 
 

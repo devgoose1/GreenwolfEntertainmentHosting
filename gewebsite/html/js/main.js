@@ -1,6 +1,14 @@
 // API endpoint configuration
 const API_BASE_URL = 'https://greenwolfentertainmenthosting.onrender.com';
 
+fetch(`${API_BASE_URL}/status`, { method: "GET" })
+  .then(res => res.json())
+  .then(console.log)
+  .catch(console.error);
+
+
+
+
 // Utility function for making API requests
 async function apiRequest(endpoint, options = {}) {
     try {
