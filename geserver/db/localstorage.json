@@ -1,10 +1,35 @@
 {
   "games": {
     "3999675": {
-      "version": 15391748,
-      "patchNotes": "New build uploaded at 2025-10-30 08:53:02",
-      "lastUpdated": "2025-10-31T09:53:04.212Z",
+      "version": 15409720,
+      "patchNotes": "New build uploaded at 2025-10-31 22:44:20",
+      "lastUpdated": "2025-11-01T01:09:10.230Z",
       "versions": [
+        {
+          "id": 15409720,
+          "patchNotes": "New build uploaded at 2025-10-31 22:44:20",
+          "detectedAt": "2025-11-01T01:09:10.229Z",
+          "uploadedAt": "2025-10-31 22:44:20",
+          "url": "https://itch.io/my-game/3999675/uploads/15409720",
+          "meta": {
+            "p_windows": true,
+            "p_osx": false,
+            "p_linux": false,
+            "storage": "hosted",
+            "updated_at": "2025-10-31 22:44:20",
+            "size": 33831463,
+            "preorder": false,
+            "position": 1,
+            "demo": false,
+            "p_android": false,
+            "type": "default",
+            "created_at": "2025-10-31 22:43:45",
+            "md5_hash": "bda9eb6ecece28934b04bb404b00abdd",
+            "id": 15409720,
+            "game_id": 3999675,
+            "filename": "AdventureValley-0.1.1-windows(build-5).zip"
+          }
+        },
         {
           "id": 15391748,
           "patchNotes": "New build uploaded at 2025-10-30 08:53:02",
@@ -14,7 +39,16 @@
       ]
     }
   },
-  "announcements": [],
+  "announcements": [
+    {
+      "id": "1761959350231",
+      "title": "New Update: 3999675 - 15409720",
+      "content": "New update for 3999675: version 15409720\n\nNew build uploaded at 2025-10-31 22:44:20",
+      "type": "game-specific",
+      "gameId": "3999675",
+      "date": "2025-11-01T01:09:10.232Z"
+    }
+  ],
   "admins": [
     "admin",
     "testadmin"
@@ -22,7 +56,7 @@
   "users": {
     "testadmin": {
       "username": "testadmin",
-      "passwordHash": "$2a$10$Y4wl24wEyGYdQF0kh5avyOPbGrdTpOxsba624rbbso2pR4MKELxnO",
+      "passwordHash": "$2a$10$cy25rFXryxhvoIJChdfg3OEuKwexTk.KDtY8PJOnkme0JB7pbDYWG",
       "displayName": "Test Admin",
       "friendlist": [],
       "ownedGames": [],

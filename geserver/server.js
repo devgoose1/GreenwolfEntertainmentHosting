@@ -19,7 +19,8 @@ const PORT = process.env.PORT || 5000;
 const JWT_SECRET = process.env.JWT_SECRET || 'dev-secret-change-me';
 
 app.use(cors({ origin: "*", methods: ["GET", "POST", "OPTIONS"] }));
-app.options("*", cors()); // allow preflight for all routes
+app.options(/.*/, cors());   // handles all preflight requests
+
 
 // Rate limiting configuration
 const defaultLimiter = rateLimit({
