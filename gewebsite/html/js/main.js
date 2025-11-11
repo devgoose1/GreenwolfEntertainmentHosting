@@ -366,7 +366,7 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 
-// user registering
+// User Registering
 document.getElementById("registerForm").addEventListener("submit", async (e) => {
   e.preventDefault();
 
