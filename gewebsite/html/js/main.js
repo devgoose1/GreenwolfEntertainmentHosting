@@ -438,7 +438,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 const response = await fetch(`${API_BASE_URL}/admin/restore`, {
                     method: 'POST',
                     body: formData,
-                    headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
+                    headers: { 'Authorization': `Bearer ${localStorage.getItem('gw_token')}` }
                 });
 
                 if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);

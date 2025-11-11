@@ -381,24 +381,18 @@ app.post('/admin/login', (req, res) => {
     }
 });
 
-app.get('/admin/backup', (req, res) => {
-    // Check if user is admin
-    if (!req.user || !req.user.isAdmin) return res.status(401).send('Unauthorized');
-
+app.get('/admin/backup', isAdmin, (req, res) => {
     const filePath = path.join(__dirname, 'localstorage.json');
-    const timestamp = new Date().toISOString().replace(/[:.]/g, '-'); // YYYY-MM-DD_HH-MM-SS
+    const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
     const backupFileName = `backup-${timestamp}.json`;
     const backupPath = path.join(__dirname, 'backups', backupFileName);
 
-    // Ensure backups folder exists
     if (!fs.existsSync(path.join(__dirname, 'backups'))) {
         fs.mkdirSync(path.join(__dirname, 'backups'));
     }
 
-    // Copy file for backup
     fs.copyFile(filePath, backupPath, (err) => {
         if (err) return res.status(500).send('Backup failed');
-        // Send backup as download
         res.download(backupPath, backupFileName, (err) => {
             if (err) console.error('Error sending backup:', err);
         });
@@ -406,20 +400,19 @@ app.get('/admin/backup', (req, res) => {
 });
 
 
-app.post('/admin/restore', upload.single('backupFile'), (req, res) => {
-    if (!req.user || !req.user.isAdmin) return res.status(401).send('Unauthorized');
-
+app.post('/admin/restore', isAdmin, upload.single('backupFile'), (req, res) => {
     if (!req.file) return res.status(400).send('No file uploaded');
 
     const tempPath = req.file.path;
     const targetPath = path.join(__dirname, 'localstorage.json');
 
     fs.copyFile(tempPath, targetPath, (err) => {
-        fs.unlink(tempPath, () => {}); // Remove temp file
+        fs.unlink(tempPath, () => {}); // remove temp file
         if (err) return res.status(500).send('Restore failed');
         res.send('Database restored successfully!');
     });
 });
+
 
 // User registration and login (JWT)
 app.post('/users/register', authRateLimiterMiddleware, async (req, res) => {
