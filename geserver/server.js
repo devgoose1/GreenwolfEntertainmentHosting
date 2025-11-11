@@ -383,13 +383,17 @@ app.post('/admin/login', (req, res) => {
 
 app.get('/admin/backup', isAdmin, (req, res) => {
     const filePath = path.join(__dirname, 'db', 'localstorage.json');
-    const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
-    const backupFileName = `backup-${timestamp}.json`;
-    const backupPath = path.join(__dirname, 'backups', backupFileName);
 
-    if (!fs.existsSync(path.join(__dirname, 'backups'))) {
-        fs.mkdirSync(path.join(__dirname, 'backups'));
-    }
+    // Format timestamp as dd-mm-yyyy_hh-mm-ss
+    const now = new Date();
+    const pad = (n) => n.toString().padStart(2, '0');
+    const timestamp = `${pad(now.getDate())}-${pad(now.getMonth()+1)}-${now.getFullYear()}_${pad(now.getHours())}-${pad(now.getMinutes())}-${pad(now.getSeconds())}`;
+
+    const backupFileName = `backup-${timestamp}.json`;
+    const backupDir = path.join(__dirname, 'backups');
+    const backupPath = path.join(backupDir, backupFileName);
+
+    if (!fs.existsSync(backupDir)) fs.mkdirSync(backupDir);
 
     fs.copyFile(filePath, backupPath, (err) => {
         if (err) return res.status(500).send('Backup failed');
@@ -398,6 +402,7 @@ app.get('/admin/backup', isAdmin, (req, res) => {
         });
     });
 });
+
 
 
 app.post('/admin/restore', isAdmin, upload.single('backupFile'), (req, res) => {

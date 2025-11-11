@@ -408,7 +408,13 @@ document.addEventListener('DOMContentLoaded', () => {
                 const url = URL.createObjectURL(blob);
                 const a = document.createElement('a');
                 a.href = url;
-                a.download = `backup-${Date.now()}.json`; // timestamped backup
+
+                // Generate timestamped filename: dd-mm-yyyy_hh-mm-ss
+                const now = new Date();
+                const pad = (n) => n.toString().padStart(2, '0');
+                const timestamp = `${pad(now.getDate())}-${pad(now.getMonth()+1)}-${now.getFullYear()}_${pad(now.getHours())}-${pad(now.getMinutes())}-${pad(now.getSeconds())}`;
+                a.download = `backup-${timestamp}.json`;
+
                 document.body.appendChild(a);
                 a.click();
                 a.remove();
@@ -422,6 +428,7 @@ document.addEventListener('DOMContentLoaded', () => {
     } else {
         console.warn("backupBtn not found");
     }
+
 
     // Restore
     const restoreForm = document.getElementById('restoreForm');
