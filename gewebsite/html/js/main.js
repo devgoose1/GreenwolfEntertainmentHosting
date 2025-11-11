@@ -401,7 +401,7 @@ document.addEventListener('DOMContentLoaded', () => {
             console.log('Backup button clicked'); // debug log
             try {
                 const response = await fetch('https://greenwolfentertainmenthosting.onrender.com/admin/backup', {
-                    headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
+                    headers: { 'Authorization': `Bearer ${localStorage.getItem('gw_token')}` }
                 });
                 if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
                 const blob = await response.blob();
