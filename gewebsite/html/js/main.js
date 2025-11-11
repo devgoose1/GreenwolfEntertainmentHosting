@@ -363,77 +363,79 @@ document.addEventListener('DOMContentLoaded', () => {
             window.location.reload(); // refresh page to show login
         });
     }
-});
 
+    // User Registering
+    document.getElementById("registerForm").addEventListener("submit", async (e) => {
+    e.preventDefault();
 
-// User Registering
-document.getElementById("registerForm").addEventListener("submit", async (e) => {
-  e.preventDefault();
+    const data = {
+        username: e.target.username.value,
+        password: e.target.password.value,
+        displayName: e.target.username.value
+    };
 
-  const data = {
-    username: e.target.username.value,
-    password: e.target.password.value,
-    displayName: e.target.username.value
-  };
+    try {
+        const result = await apiRequest("/users/register", {
+        method: "POST",
+        body: JSON.stringify(data),
+        });
 
-  try {
-    const result = await apiRequest("/users/register", {
-      method: "POST",
-      body: JSON.stringify(data),
+        document.getElementById("message").textContent = result.success
+        ? "Registration successful!"
+        : result.error || "Registration failed.";
+    } catch (err) {
+        console.error(err);
+        document.getElementById("message").textContent = "Error connecting to server.";
+    }
     });
 
-    document.getElementById("message").textContent = result.success
-      ? "Registration successful!"
-      : result.error || "Registration failed.";
-  } catch (err) {
-    console.error(err);
-    document.getElementById("message").textContent = "Error connecting to server.";
-  }
+    // Backup
+    document.getElementById('backupBtn').addEventListener('click', async () => {
+        try {
+            const response = await fetch('https://greenwolfentertainmenthosting.onrender.com/admin/backup', {
+                headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
+            });
+            if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+            const blob = await response.blob();
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'backup.json'; 
+            document.body.appendChild(a);
+            a.click();
+            a.remove();
+            URL.revokeObjectURL(url);
+            alert('Backup downloaded!');
+        } catch (err) {
+            console.error('Backup failed', err);
+            alert('Backup failed! Check console.');
+        }
+    });
+
+    // Restore
+    document.getElementById('restoreForm').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const fileInput = document.getElementById('backupFile');
+        if (!fileInput.files.length) return alert('Select a backup file');
+
+        const formData = new FormData();
+        formData.append('backupFile', fileInput.files[0]);
+
+        try {
+            const response = await fetch('https://greenwolfentertainmenthosting.onrender.com/admin/restore', {
+                method: 'POST',
+                body: formData,
+                headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
+            });
+
+            if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+            alert(await response.text());
+        } catch (err) {
+            console.error('Restore failed', err);
+            alert('Restore failed! Check console.');
+        }
+    });
+
 });
 
-// Backup
-document.getElementById('backupBtn').addEventListener('click', async () => {
-    try {
-        const response = await fetch('https://greenwolfentertainmenthosting.onrender.com/admin/backup', {
-            headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
-        });
-        if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
-        const blob = await response.blob();
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = 'backup.json'; 
-        document.body.appendChild(a);
-        a.click();
-        a.remove();
-        URL.revokeObjectURL(url);
-        alert('Backup downloaded!');
-    } catch (err) {
-        console.error('Backup failed', err);
-        alert('Backup failed! Check console.');
-    }
-});
 
-// Restore
-document.getElementById('restoreForm').addEventListener('submit', async (e) => {
-    e.preventDefault();
-    const fileInput = document.getElementById('backupFile');
-    if (!fileInput.files.length) return alert('Select a backup file');
-
-    const formData = new FormData();
-    formData.append('backupFile', fileInput.files[0]);
-
-    try {
-        const response = await fetch('https://greenwolfentertainmenthosting.onrender.com/admin/restore', {
-            method: 'POST',
-            body: formData,
-            headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
-        });
-
-        if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
-        alert(await response.text());
-    } catch (err) {
-        console.error('Restore failed', err);
-        alert('Restore failed! Check console.');
-    }
-});
