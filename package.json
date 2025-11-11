@@ -2,6 +2,7 @@
   "dependencies": {
     "express-rate-limit": "^8.2.0",
     "ioredis": "^5.8.2",
+    "multer": "^2.0.2",
     "rate-limiter-flexible": "^8.1.0"
   }
 }

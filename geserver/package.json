@@ -19,6 +19,7 @@
     "dotenv": "^17.2.3",
     "express": "^5.1.0",
     "fs": "^0.0.1-security",
-    "jsonwebtoken": "^9.0.0"
+    "jsonwebtoken": "^9.0.0",
+    "multer": "^2.0.2"
   }
 }

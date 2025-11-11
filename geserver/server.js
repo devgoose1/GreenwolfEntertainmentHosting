@@ -14,6 +14,9 @@ const { RateLimiterRedis, RateLimiterMemory } = require('rate-limiter-flexible')
 const IORedis = require('ioredis');
 const axios = require('axios');
 
+const multer = require('multer');
+const upload = multer({ dest: 'uploads/' });
+
 const app = express();
 const PORT = process.env.PORT || 5000;
 const JWT_SECRET = process.env.JWT_SECRET || 'dev-secret-change-me';
@@ -376,6 +379,46 @@ app.post('/admin/login', (req, res) => {
     } else {
         res.status(401).json({ error: 'Invalid admin token' });
     }
+});
+
+app.get('/admin/backup', (req, res) => {
+    // Check if user is admin
+    if (!req.user || !req.user.isAdmin) return res.status(401).send('Unauthorized');
+
+    const filePath = path.join(__dirname, 'localstorage.json');
+    const timestamp = new Date().toISOString().replace(/[:.]/g, '-'); // YYYY-MM-DD_HH-MM-SS
+    const backupFileName = `backup-${timestamp}.json`;
+    const backupPath = path.join(__dirname, 'backups', backupFileName);
+
+    // Ensure backups folder exists
+    if (!fs.existsSync(path.join(__dirname, 'backups'))) {
+        fs.mkdirSync(path.join(__dirname, 'backups'));
+    }
+
+    // Copy file for backup
+    fs.copyFile(filePath, backupPath, (err) => {
+        if (err) return res.status(500).send('Backup failed');
+        // Send backup as download
+        res.download(backupPath, backupFileName, (err) => {
+            if (err) console.error('Error sending backup:', err);
+        });
+    });
+});
+
+
+app.post('/admin/restore', upload.single('backupFile'), (req, res) => {
+    if (!req.user || !req.user.isAdmin) return res.status(401).send('Unauthorized');
+
+    if (!req.file) return res.status(400).send('No file uploaded');
+
+    const tempPath = req.file.path;
+    const targetPath = path.join(__dirname, 'localstorage.json');
+
+    fs.copyFile(tempPath, targetPath, (err) => {
+        fs.unlink(tempPath, () => {}); // Remove temp file
+        if (err) return res.status(500).send('Restore failed');
+        res.send('Database restored successfully!');
+    });
 });
 
 // User registration and login (JWT)
