@@ -404,7 +404,7 @@ app.post('/admin/restore', isAdmin, upload.single('backupFile'), (req, res) => {
     if (!req.file) return res.status(400).send('No file uploaded');
 
     const tempPath = req.file.path;
-    const targetPath = path.join(__dirname, 'localstorage.json');
+    const targetPath = path.join(__dirname, 'db', 'localstorage.json');
 
     fs.copyFile(tempPath, targetPath, (err) => {
         fs.unlink(tempPath, () => {}); // remove temp file
