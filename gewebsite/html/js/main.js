@@ -76,7 +76,7 @@ async function handleAdminLogin() {
             method: 'POST',
             body: JSON.stringify({ username, password })
         });
-        if (resp.token) {
+        if (resp.token && resp.isAdmin) {
             localStorage.setItem('gw_token', resp.token);
             document.getElementById('loginSection').style.display = 'none';
             document.getElementById('adminPanel').style.display = 'block';
@@ -354,4 +354,39 @@ document.addEventListener('DOMContentLoaded', () => {
 
 
     console.log('Website initialized');
+
+    const logoutBtn = document.getElementById('logoutBtn');
+    if (logoutBtn) {
+        logoutBtn.addEventListener('click', () => {
+            localStorage.removeItem('gw_token'); // remove stored token
+            alert('Logged out successfully!');
+            window.location.reload(); // refresh page to show login
+        });
+    }
+});
+
+
+// user registering
+document.getElementById("registerForm").addEventListener("submit", async (e) => {
+  e.preventDefault();
+
+  const data = {
+    username: e.target.username.value,
+    password: e.target.password.value,
+    displayName: e.target.username.value
+  };
+
+  try {
+    const result = await apiRequest("/users/register", {
+      method: "POST",
+      body: JSON.stringify(data),
+    });
+
+    document.getElementById("message").textContent = result.success
+      ? "Registration successful!"
+      : result.error || "Registration failed.";
+  } catch (err) {
+    console.error(err);
+    document.getElementById("message").textContent = "Error connecting to server.";
+  }
 });
