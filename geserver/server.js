@@ -404,14 +404,23 @@ app.post('/admin/restore', isAdmin, upload.single('backupFile'), (req, res) => {
     if (!req.file) return res.status(400).send('No file uploaded');
 
     const tempPath = req.file.path;
-    const targetPath = path.join(__dirname, 'db', 'localstorage.json');
+    const targetDir = path.join(__dirname, 'db');
+    const targetPath = path.join(targetDir, 'localstorage.json');
+
+    if (!fs.existsSync(targetDir)) fs.mkdirSync(targetDir);
+
+    console.log('DEBUG: restoring from', tempPath, 'to', targetPath);
 
     fs.copyFile(tempPath, targetPath, (err) => {
         fs.unlink(tempPath, () => {}); // remove temp file
-        if (err) return res.status(500).send('Restore failed');
+        if (err) {
+            console.error('Restore failed:', err);
+            return res.status(500).send('Restore failed');
+        }
         res.send('Database restored successfully!');
     });
 });
+
 
 
 // User registration and login (JWT)
