@@ -814,3 +814,75 @@ app.listen(PORT, () => {
     // Start the itch watcher after server is running
     startItchWatcher();
 });
+
+
+// ======= GitHub issue submission endpoint =======
+// Insert this somewhere after your existing routes (e.g. after /announcements handlers)
+const GITHUB_TOKEN = process.env.GITHUB_TOKEN; // set in .env
+const GITHUB_REPO_OWNER = process.env.GITHUB_REPO_OWNER; // e.g. "your-username-or-org"
+const GITHUB_REPO_NAME = process.env.GITHUB_REPO_NAME;   // e.g. "your-repo-name"
+
+app.post('/submit-issue', async (req, res) => {
+    try {
+        if (!GITHUB_TOKEN || !GITHUB_REPO_OWNER || !GITHUB_REPO_NAME) {
+            return res.status(500).json({ error: 'Server misconfiguration: missing GitHub env vars' });
+        }
+
+        // Accept fields from frontend
+        const {
+            kind,        // 'bug' | 'feature' etc (dropdown)
+            reporter,    // reporter name or email
+            title,       // short title
+            description, // long description
+            gameId,      // optional, for which game
+            extra        // optional additional metadata
+        } = req.body || {};
+
+        if (!title || !description) {
+            return res.status(400).json({ error: 'Missing required fields: title and description' });
+        }
+
+        // Format issue body
+        const bodyLines = [];
+        bodyLines.push(`**Type:** ${String(kind || 'report')}`);
+        if (gameId) bodyLines.push(`**Game ID:** ${String(gameId)}`);
+        if (reporter) bodyLines.push(`**Reported by:** ${String(reporter)}`);
+        bodyLines.push('');
+        bodyLines.push('---');
+        bodyLines.push('');
+        bodyLines.push(`${String(description)}`);
+        if (extra) {
+            bodyLines.push('');
+            bodyLines.push('---');
+            bodyLines.push('');
+            bodyLines.push(`**Extra info:**\n\`\`\`\n${JSON.stringify(extra, null, 2)}\n\`\`\``);
+        }
+
+        const issuePayload = {
+            title: String(title).slice(0, 250),
+            body: bodyLines.join('\n'),
+            labels: [ String(kind || 'triage') ] // simple label based on kind
+        };
+
+        const ghUrl = `https://api.github.com/repos/${GITHUB_REPO_OWNER}/${GITHUB_REPO_NAME}/issues`;
+        const ghResp = await axios.post(ghUrl, issuePayload, {
+            headers: {
+                'Authorization': `token ${GITHUB_TOKEN}`,
+                'Accept': 'application/vnd.github+json',
+                'User-Agent': 'greenwolf-issue-bot'
+            },
+            timeout: 15000
+        });
+
+        if (ghResp && ghResp.data && ghResp.data.html_url) {
+            return res.json({ success: true, issueUrl: ghResp.data.html_url, issueNumber: ghResp.data.number });
+        } else {
+            return res.status(500).json({ error: 'GitHub did not return issue url', details: ghResp.data || null });
+        }
+    } catch (err) {
+        console.error('Failed to create GitHub issue:', err.response?.data || err.message || err);
+        const status = err.response?.status || 500;
+        const data = err.response?.data || { message: err.message || 'Unknown error' };
+        return res.status(status).json({ error: 'Failed to create issue', details: data });
+    }
+});

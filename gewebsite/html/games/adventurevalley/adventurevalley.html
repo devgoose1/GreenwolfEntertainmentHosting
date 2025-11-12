@@ -17,7 +17,7 @@
                 <li><a href="../../index.html">Home</a></li>
                 <li><a href="../../homepage/games.html">Games</a></li>
                 <li><a href="../../homepage/launcher.html">Launcher</a></li>
-                <li><a href="../../homepage//admin.html">Admin</a></li>
+                <li><a href="../../homepage/admin.html">Admin</a></li>
             </ul>
         </nav>
     </header>
@@ -42,6 +42,40 @@
             <h3>About the Game</h3>
             <p>Adventure Valley is an exciting journey through mysterious lands where you'll face challenging quests and discover hidden treasures. Explore vast landscapes, battle fearsome creatures, and become the hero you were meant to be!</p>
         </section>
+
+        <!-- Start: Issue submission form -->
+        <section id="issueReport" class="issue-report">
+            <h3>Report a bug or request a feature</h3>
+            <form id="issueForm">
+                <label>
+                Type:
+                <select name="kind" id="issueKind">
+                    <option value="bug">Bug report</option>
+                    <option value="feature">Feature request</option>
+                    <option value="other">Other</option>
+                </select>
+                </label>
+                <label>
+                Your name or handle:
+                <input type="text" name="reporter" id="issueReporter" placeholder="Optional">
+                </label>
+                <label>
+                Title:
+                <input type="text" name="title" id="issueTitle" required placeholder="Short summary">
+                </label>
+                <label>
+                Description:
+                <textarea name="description" id="issueDescription" required placeholder="Describe steps to reproduce, expected behaviour, etc."></textarea>
+                </label>
+                <input type="hidden" name="gameId" value="3999675" id="issueGameId">
+                <div>
+                <button type="submit" id="submitIssueBtn" class="cta-button">Send report</button>
+                <span id="submitIssueStatus" aria-live="polite"></span>
+                </div>
+            </form>
+        </section>
+        <!-- End: Issue submission form -->
+
 
         <!-- Dynamic version selector inserted by main.js -->
         <!-- main.js will prepend this inside <main>:

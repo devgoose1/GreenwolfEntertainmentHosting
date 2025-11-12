@@ -174,7 +174,15 @@ function renderStoredGames(games) {
             <li>${v.id} <small>(${v.detectedAt ? new Date(v.detectedAt).toLocaleString() : ''})</small></li>
         `).join('');
 
-        return
+        return `
+            <div class="game-item">
+                <h4>${gameId}</h4>
+                <p>Current version: ${current}</p>
+                <p>Last updated: ${lastUpdated}</p>
+                <ul>${versions}</ul>
+            </div>
+        `;
+
     }).join('');
 }
 
@@ -457,6 +465,50 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     } else {
         console.warn("restoreForm not found");
+    }
+
+
+    // ===== Issue form submission handler =====
+    const issueForm = document.getElementById('issueForm');
+    if (issueForm) {
+        issueForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const statusEl = document.getElementById('submitIssueStatus');
+            const btn = document.getElementById('submitIssueBtn');
+            try {
+                btn.disabled = true;
+                statusEl.textContent = 'Sending...';
+
+                const payload = {
+                    kind: document.getElementById('issueKind').value,
+                    reporter: document.getElementById('issueReporter').value || '',
+                    title: document.getElementById('issueTitle').value,
+                    description: document.getElementById('issueDescription').value,
+                    gameId: document.getElementById('issueGameId').value || null
+                };
+
+                const resp = await fetch(`${API_BASE_URL}/submit-issue`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+
+                const data = await resp.json();
+                if (resp.ok && data.success) {
+                    statusEl.innerHTML = `Issue created: <a href="${data.issueUrl}" target="_blank" rel="noopener">${data.issueUrl}</a>`;
+                    issueForm.reset();
+                } else {
+                    console.error('Issue submission failed', data);
+                    statusEl.textContent = `Failed to create issue: ${data.error || JSON.stringify(data)}`;
+                }
+            } catch (err) {
+                console.error('Issue submit error', err);
+                statusEl.textContent = `Error: ${err.message || err}`;
+            } finally {
+                btn.disabled = false;
+                setTimeout(() => { if (statusEl) statusEl.textContent = ''; }, 15000);
+            }
+        });
     }
 
 });
