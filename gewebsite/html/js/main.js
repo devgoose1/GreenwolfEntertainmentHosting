@@ -495,7 +495,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
                 const data = await resp.json();
                 if (resp.ok && data.success) {
-                    statusEl.innerHTML = `Issue created: <a href="${data.issueUrl}" target="_blank" rel="noopener">${data.issueUrl}</a>`;
+                    statusEl.innerHTML = `Issue created`;
                     issueForm.reset();
                 } else {
                     console.error('Issue submission failed', data);
