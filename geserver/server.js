@@ -454,10 +454,12 @@ app.post('/users/login', authRateLimiterMiddleware, async (req, res) => {
     if (!username || !password) return res.status(400).json({ error: 'username and password required' });
 
     const users = localstorage.getItem('users') || {};
-    const user = users[username];
+    const userKey = Object.keys(users).find(k => k.toLowerCase() === username.toLowerCase());
+    const user = users[userKey];
 
     console.log('Login attempt:', username);
     console.log('Existing users:', Object.keys(users));
+    console.log('Stored hash:', user.passwordHash);
 
     if (!user) return res.status(401).json({ error: 'Invalid credentials' });
 
