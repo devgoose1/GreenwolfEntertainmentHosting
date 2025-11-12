@@ -424,6 +424,11 @@ app.post('/admin/restore', isAdmin, upload.single('backupFile'), (req, res) => {
             console.error('Restore failed:', err);
             return res.status(500).send('Restore failed');
         }
+
+        // --- NEW: reload in-memory localstorage ---
+        localstorage.reload();
+        console.log('DEBUG: localstorage reloaded after restore. Users:', Object.keys(localstorage._raw().users || {}));
+
         res.send('Database restored successfully!');
     });
 });

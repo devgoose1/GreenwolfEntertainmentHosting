@@ -10,16 +10,20 @@ if (!fs.existsSync(path.dirname(dbPath))) {
 }
 
 // Load data safely
-if (fs.existsSync(dbPath)) {
-  try {
-    const file = fs.readFileSync(dbPath, 'utf8').trim();
-    internal = file ? JSON.parse(file) : {};
-  } catch (err) {
-    console.error('⚠️ Warning: localstorage.json is invalid, resetting to empty object.');
+function load() {
+  if (fs.existsSync(dbPath)) {
+    try {
+      const file = fs.readFileSync(dbPath, 'utf8').trim();
+      internal = file ? JSON.parse(file) : {};
+    }
+    catch (err) {
+      console.error('⚠️ Warning: localstorage.json is invalid, resetting to empty object.');
+      internal = {};
+    }
+  } else {
+    fs.writeFileSync(dbPath, '{}');
     internal = {};
   }
-} else {
-  fs.writeFileSync(dbPath, '{}');
 }
 
 // Save function
@@ -37,7 +41,12 @@ const localstorage = {
   removeItem: (key) => {
     delete internal[key];
     save();
-  }
+  },
+  reload: () => {
+    load();
+    return internal;
+  },
+  _raw: () => internal // For testing/debugging purposes
 };
 
 module.exports = { localstorage };
