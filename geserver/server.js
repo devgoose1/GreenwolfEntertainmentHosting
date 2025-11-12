@@ -453,7 +453,7 @@ app.post('/users/register', authRateLimiterMiddleware, async (req, res) => {
 
 app.post('/users/login', authRateLimiterMiddleware, async (req, res) => {
     console.log('Incoming /users/login request:', req.body);
-    
+
     try {
         const { username, password } = req.body;
         if (!username || !password)
@@ -477,10 +477,19 @@ app.post('/users/login', authRateLimiterMiddleware, async (req, res) => {
         console.log('Existing users:', Object.keys(users));
         console.log('Stored hash:', user.passwordHash);
 
+
+        console.log('Comparing password for', userKey);
+        console.log('Provided password:', password);
+        console.log('Stored hash:', user.passwordHash);
+
+
         const ok = await bcrypt.compare(password, user.passwordHash);
         if (!ok)
             return res.status(401).json({ error: 'Invalid credentials' });
+        console.log('Password match result:', ok);
 
+
+        
         // Case-insensitive admin check
         const admins = localstorage.getItem('admins') || [];
         const isAdminUser = admins.some(
