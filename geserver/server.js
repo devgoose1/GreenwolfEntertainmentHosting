@@ -455,6 +455,10 @@ app.post('/users/login', authRateLimiterMiddleware, async (req, res) => {
 
     const users = localstorage.getItem('users') || {};
     const user = users[username];
+
+    console.log('Login attempt:', username);
+    console.log('Existing users:', Object.keys(users));
+
     if (!user) return res.status(401).json({ error: 'Invalid credentials' });
 
     const ok = await bcrypt.compare(password, user.passwordHash);
