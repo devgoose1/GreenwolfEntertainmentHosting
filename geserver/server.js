@@ -23,6 +23,7 @@ const JWT_SECRET = process.env.JWT_SECRET || 'dev-secret-change-me';
 
 app.use(cors({ origin: "*", methods: ["GET", "POST", "OPTIONS"] }));
 app.options(/.*/, cors());   // handles all preflight requests
+app.set('trust proxy', 1);
 
 
 // Rate limiting configuration
