@@ -72,7 +72,7 @@ const adminLimiter = rateLimit({
 
 // Middleware setup
 app.use(cors());
-app.use(bodyParser.json());
+//app.use(bodyParser.json());
 app.use(express.json());
 
 // Apply rate limiting
