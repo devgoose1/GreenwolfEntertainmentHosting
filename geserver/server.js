@@ -18,12 +18,12 @@ const multer = require('multer');
 const upload = multer({ dest: 'uploads/' });
 
 const app = express();
+app.set('trust proxy', 1);
 const PORT = process.env.PORT || 5000;
 const JWT_SECRET = process.env.JWT_SECRET || 'dev-secret-change-me';
 
 app.use(cors({ origin: "*", methods: ["GET", "POST", "OPTIONS"] }));
 app.options(/.*/, cors());   // handles all preflight requests
-app.set('trust proxy', 1);
 
 
 // Rate limiting configuration
@@ -88,10 +88,11 @@ async function authRateLimiterMiddleware(req, res, next) {
         await authLimiterStore.consume(key, 1);
         return next();
     } catch (rejRes) {
-        // rate limited
+        console.error('Auth rate limiter blocked request for', key, rejRes);
         return res.status(429).json({ error: 'Too many login attempts, please try again later' });
     }
 }
+
 
 if (!fs.existsSync("db")) fs.mkdirSync("db");
 if (!fs.existsSync("db/localstorage.json")) fs.writeFileSync("db/localstorage.json", "{}");
@@ -451,6 +452,8 @@ app.post('/users/register', authRateLimiterMiddleware, async (req, res) => {
 });
 
 app.post('/users/login', authRateLimiterMiddleware, async (req, res) => {
+    console.log('Incoming /users/login request:', req.body);
+    
     try {
         const { username, password } = req.body;
         if (!username || !password)
