@@ -450,28 +450,54 @@ app.post('/users/register', authRateLimiterMiddleware, async (req, res) => {
 });
 
 app.post('/users/login', authRateLimiterMiddleware, async (req, res) => {
-    const { username, password } = req.body;
-    if (!username || !password) return res.status(400).json({ error: 'username and password required' });
+    try {
+        const { username, password } = req.body;
+        if (!username || !password)
+            return res.status(400).json({ error: 'username and password required' });
 
-    const users = localstorage.getItem('users') || {};
-    const userKey = Object.keys(users).find(k => k.toLowerCase() === username.toLowerCase());
-    const user = users[userKey];
+        const users = localstorage.getItem('users') || {};
 
-    console.log('Login attempt:', username);
-    console.log('Existing users:', Object.keys(users));
-    console.log('Stored hash:', user.passwordHash);
+        // Case-insensitive lookup
+        const userKey = Object.keys(users).find(
+            k => k.toLowerCase() === username.toLowerCase()
+        );
+        if (!userKey)
+            return res.status(401).json({ error: 'Invalid credentials' });
 
-    if (!user) return res.status(401).json({ error: 'Invalid credentials' });
+        const user = users[userKey];
+        if (!user || !user.passwordHash)
+            return res.status(401).json({ error: 'Invalid credentials' });
 
-    const ok = await bcrypt.compare(password, user.passwordHash);
-    if (!ok) return res.status(401).json({ error: 'Invalid credentials' });
+        console.log('Login attempt:', username);
+        console.log('Matched user key:', userKey);
+        console.log('Existing users:', Object.keys(users));
+        console.log('Stored hash:', user.passwordHash);
 
-    // Determine isAdmin: user is admin if their username is in admins list
-    const admins = localstorage.getItem('admins') || [];
-    const isAdminUser = admins.includes(username);
+        const ok = await bcrypt.compare(password, user.passwordHash);
+        if (!ok)
+            return res.status(401).json({ error: 'Invalid credentials' });
 
-    const token = jwt.sign({ username, displayName: user.displayName, isAdmin: isAdminUser }, JWT_SECRET, { expiresIn: '12h' });
-    res.json({ token, isAdmin: isAdminUser });
+        // Case-insensitive admin check
+        const admins = localstorage.getItem('admins') || [];
+        const isAdminUser = admins.some(
+            a => a.toLowerCase() === userKey.toLowerCase()
+        );
+
+        const token = jwt.sign(
+            {
+                username: user.username,
+                displayName: user.displayName,
+                isAdmin: isAdminUser,
+            },
+            JWT_SECRET,
+            { expiresIn: '12h' }
+        );
+
+        res.json({ token, isAdmin: isAdminUser });
+    } catch (err) {
+        console.error('Login error:', err);
+        res.status(500).json({ error: 'Internal Server Error' });
+    }
 });
 
 // Admin user management
